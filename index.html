@@ -113,25 +113,33 @@ function scaleColor(t){
   return `rgb(${a.map((v,j)=>Math.round(v+(b[j]-v)*f)).join(',')})`;
 }
 const world = Globe()(document.getElementById('globe'))
-  .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
-  .backgroundColor('#000000').showAtmosphere(true).atmosphereColor('#2c4a63').atmosphereAltitude(0.1)
-  .pointLat('lat').pointLng('lng').pointRadius(1.15).pointAltitude(0.012).pointColor('color')
+  .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
+  .backgroundColor('#000000').showAtmosphere(true).atmosphereColor('#3d6076').atmosphereAltitude(0.18)
+  .polygonCapColor('color').polygonSideColor('side').polygonStrokeColor(()=> '#0a0e11')
+  .polygonAltitude(0.006).polygonLabel('label').polygonsTransitionDuration(600)
   .labelLat('lat').labelLng('lng').labelText('label').labelSize(1.2).labelColor(()=> '#e8eef1')
   .pointOfView({lat:20, lng:127, altitude:1.55}, 0)
   .onGlobeClick(({lat,lng})=>{ pick(lat,lng); });
+world.controls().autoRotate = true;
+world.controls().autoRotateSpeed = 0.45;
+document.getElementById('globe').addEventListener('pointerdown', ()=>{ world.controls().autoRotate = false; }, { once:true });
 
 function drawLayer(){
-  if(!STATS||layer==='off'){ world.pointsData([]); setScale(); return; }
-  const pts=[];
+  if(!STATS||layer==='off'){ world.polygonsData([]); setScale(); return; }
+  const polys=[];
   for(const [k,s] of Object.entries(STATS)){
     const [a,b]=k.split(',').map(Number);
     let v, t;
     if(layer==='ri'){ v=s.ri_pct; t=v/8; }
     else { const d=DEFS[k+','+month]; if(!d) continue; v=d.SST; t=(v-19)/12; }
-    pts.push({lat:a+1.25, lng:b+1.25, color:scaleColor(t),
+    const c=scaleColor(t);
+    polys.push({
+      geometry:{ type:'Polygon', coordinates:[[[b,a],[b+2.5,a],[b+2.5,a+2.5],[b,a+2.5],[b,a]]] },
+      color: c.replace('rgb','rgba').replace(')',',0.88)'),
+      side: c.replace('rgb','rgba').replace(')',',0.35)'),
       label:`${(a+1.25).toFixed(1)}N ${(b+1.25).toFixed(1)}E ${layer==='ri' ? 'RI '+v+'%' : 'SST '+v+'C'}`});
   }
-  world.pointsData(pts); setScale();
+  world.polygonsData(polys); setScale();
 }
 function setScale(){
   const[a,c]= layer==='sst' ? ['19C','31C'] : ['0%','8%+'];
