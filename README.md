@@ -2,7 +2,7 @@
 
 An AI system that predicts whether an existing tropical cyclone will rapidly intensify, rapidly weaken, or see no rapid change during the next 24 hours, presented through an interactive 3D globe for the Philippines/West Pacific corridor.
 
-**Live demo:** https://apartpassion121.github.io/cyclone-ri-warning/
+**Live demo:** https://apartpassion121.github.io/cyclone-ri-warning/ (Not yet set up)
 **Model notebook:** `cyclone_ri_warning.ipynb` (Kaggle, runs top to bottom)
 
 ## Desired outcomes
