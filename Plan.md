@@ -3,9 +3,9 @@
 ## Settings I will use
 
 - **Area:** West Pacific corridor — latitude 5–40, longitude 110–145
-- **Data years:** 2010–2025
-- **Training years:** 2010–2019
-- **Testing years:** 2020–2025
+- **Data years:** start-2025
+- **Training years:** start–2020
+- **Testing years:** 2021–2025
 - **Prediction window:** next 24 hours
 - **Outcomes:**
   - Rapid intensification: wind change **≥ +30 kt**
@@ -25,8 +25,8 @@
 
 ## Step 2 — Create the notebook
 
-- [ ] Open Kaggle using my personal Google account.
-- [ ] Create a notebook named `cyclone_ri_warning.ipynb`.
+- [ ] Open Kaggle and create a new notebook named `cyclone_ri_warning`.
+- [ ] In the notebook settings, turn Internet on and leave the accelerator set to None (this project runs on CPU).
 - [ ] Add the project title and this one-sentence description:
 
 > An AI system that predicts whether an existing tropical cyclone will rapidly intensify, rapidly weaken, or see no rapid change during the next 24 hours, presented through an interactive 3D globe for the Philippines/West Pacific corridor.
@@ -35,10 +35,10 @@
 
 ## Step 3 — Download and load the data
 
-- [ ] Download the IBTrACS since-1980 CSV from NOAA NCEI:
+- [ ] Download the full IBTrACS archive CSV (records since 1842) from NOAA NCEI:
 
 ```text
-https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r01/access/csv/ibtracs.since1980.list.v04r01.csv
+https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r01/access/csv/ibtracs.ALL.list.v04r01.csv
 ```
 
 - [ ] Load it with pandas.
@@ -101,8 +101,8 @@ delta_24h = wind_24h_later - wind_now
 
 ## Step 7 — Split the training and testing data
 
-- [ ] Put records from 2010–2019 in the training set.
-- [ ] Put records from 2020–2025 in the testing set.
+- [ ] Put records from 2010–2020 in the training set.
+- [ ] Put records from 2021–2025 in the testing set.
 - [ ] Do not shuffle the rows into a random split.
 - [ ] Print the number of training and testing rows.
 - [ ] Print the outcome counts for both sets.
@@ -126,10 +126,10 @@ delta_24h = wind_24h_later - wind_now
 - [ ] Scale the numeric features using values calculated from the training set only.
 - [ ] Train multinomial logistic regression with balanced class weights.
 - [ ] Train a random forest with balanced class weights as a comparison.
-- [ ] Use both models on the same 2020–2025 testing set.
+- [ ] Use both models on the same 2021–2025 testing set.
 - [ ] Record the same metrics used for the simple forecasts.
 - [ ] Compare the models by rapid-change recall and false alarms, not by overall accuracy alone.
-- [ ] Inspect the results for Goni, Rai, Doksuri, and Yagi when those storms appear in the testing data.
+- [ ] Inspect the results for Rai, Doksuri, Mawar, and Yagi when those storms appear in the testing data.
 - [ ] Write down at least three cases the model got wrong and one possible reason for each.
 
 ## Step 10 — Build the from-scratch comparison
