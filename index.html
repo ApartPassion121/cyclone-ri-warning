@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyclone RI Warning</title>
+<script src="https://unpkg.com/globe.gl@2.31.0/dist/globe.gl.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#000; color:#cfd8dc; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; overflow:hidden; font-size:11px; }
+  #globe { position:fixed; inset:0; }
+  #hud { position:fixed; top:10px; left:12px; text-shadow:0 1px 3px #000; pointer-events:none; }
+  #hud h1 { font-size:14px; font-weight:600; color:#eef3f5; letter-spacing:.03em; }
+  #hud p { color:#8fa3ad; margin-top:2px; }
+  #hud p b { color:#cfe3cf; font-weight:500; }
+  .box { position:fixed; background:rgba(3,6,8,.78); }
+  #ctl { left:12px; bottom:12px; padding:7px 9px; line-height:1.9; }
+  #ctl .k { color:#697d87; margin-right:5px; }
+  .lnk { color:#9db0ba; cursor:pointer; padding:1px 3px; }
+  .lnk:hover { color:#fff; }
+  .lnk.on { color:#fff; background:#33434d; }
+  select { background:#0a0f12; color:#e8eef1; border:1px solid #33434d; font:inherit; font-size:11px; padding:1px; }
+  #scalebar { width:180px; height:6px; margin-top:3px; background:linear-gradient(90deg,#2b83ba,#5ab4ac,#a6dba0,#fee08b,#fdae61,#d7191c); }
+  #scalevals { display:flex; justify-content:space-between; width:180px; color:#697d87; font-size:9px; margin-top:2px; }
+  #panel { right:12px; top:12px; width:248px; padding:8px 10px; max-height:calc(100vh - 24px); overflow-y:auto; }
+  #panel .hd { display:flex; justify-content:space-between; align-items:baseline; }
+  #panel h2 { font-size:11px; font-weight:600; letter-spacing:.1em; color:#e8eef1; }
+  #hide { color:#697d87; cursor:pointer; }
+  #hide:hover { color:#fff; }
+  #locread { color:#8fa3ad; line-height:1.5; margin:5px 0 7px; }
+  #locread b { color:#e8eef1; font-weight:500; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:5px 8px; }
+  .fld label { display:block; font-size:9px; color:#697d87; letter-spacing:.06em; margin-bottom:1px; }
+  .fld input { width:100%; background:#0a0f12; border:1px solid #26333b; color:#e8eef1; padding:3px 5px; font:inherit; font-size:11px; }
+  .fld input:focus { outline:none; border-color:#71858f; }
+  #predict { width:100%; margin-top:8px; background:#b03a2e; color:#fff; border:none; padding:6px; font:inherit; font-size:11px; font-weight:600; letter-spacing:.12em; cursor:pointer; }
+  #predict:hover { background:#c14436; }
+  #result { margin-top:8px; display:none; }
+  .bar-row { display:flex; align-items:center; gap:6px; margin:3px 0; }
+  .bar-row .nm { width:34px; color:#8fa3ad; }
+  .bar-row .pc { width:42px; text-align:right; color:#e8eef1; }
+  .bar-bg { flex:1; background:#141b1f; height:5px; }
+  .bar-fill { height:100%; }
+  #verdict { margin-top:7px; padding:6px 7px; line-height:1.5; display:none; border-left:2px solid; }
+  .v-ri { background:rgba(176,58,46,.15); border-color:#d7191c; }
+  .v-we { background:rgba(63,131,196,.13); border-color:#3f83c4; }
+  .v-st { background:rgba(127,176,105,.11); border-color:#7fb069; }
+  #conds { margin-top:8px; border-top:1px solid #26333b; padding-top:6px; color:#8fa3ad; line-height:1.65; }
+  #conds .ok { color:#7fb069; } #conds .bad { color:#e08a4c; } #conds .na { color:#4d5f69; }
+  #open { position:fixed; right:12px; top:12px; display:none; color:#9db0ba; background:rgba(3,6,8,.78); padding:5px 9px; cursor:pointer; letter-spacing:.1em; }
+  #open:hover { color:#fff; }
+  @media (max-width:820px){ #panel{ left:12px; width:auto; max-height:48vh; } #hud p{display:none;} }
+</style>
+</head>
+<body>
+<div id="globe"></div>
+
+<div id="hud">
+  <h1>Cyclone RI Warning</h1>
+  <p>24 h rapid-change outlook · West Pacific · RI caught <b>92.9%</b> · weaken <b>89.9%</b> · test yrs 2021–25</p>
+</div>
+
+<div class="box" id="ctl">
+  <div><span class="k">Layer</span><span class="lnk lay on" data-lay="ri">RI history</span> <span class="lnk lay" data-lay="sst">SST</span> <span class="lnk lay" data-lay="off">Off</span></div>
+  <div><span class="k">Month</span><select id="month"></select></div>
+  <div id="scalebar"></div>
+  <div id="scalevals"><span id="sv1">0%</span><span id="sv2"></span><span id="sv3">8%+</span></div>
+  <div style="color:#4d5f69">NOAA IBTrACS · NOAA OISST · not an official forecast</div>
+</div>
+
+<div class="box" id="panel">
+  <div class="hd"><h2>STORM</h2><span id="hide">HIDE</span></div>
+  <div id="body">
+    <div id="locread">Click the globe in the corridor (5–40°N, 110–145°E).</div>
+    <div class="grid" id="form"></div>
+    <button id="predict">RUN</button>
+    <div id="result">
+      <div class="bar-row"><span class="nm">RI</span><div class="bar-bg"><div class="bar-fill" id="b-ri" style="background:#d7191c"></div></div><span class="pc" id="p-ri"></span></div>
+      <div class="bar-row"><span class="nm">WEAK</span><div class="bar-bg"><div class="bar-fill" id="b-we" style="background:#3f83c4"></div></div><span class="pc" id="p-we"></span></div>
+      <div class="bar-row"><span class="nm">STEADY</span><div class="bar-bg"><div class="bar-fill" id="b-st" style="background:#7fb069"></div></div><span class="pc" id="p-st"></span></div>
+    </div>
+    <div id="verdict"></div>
+    <div id="conds"></div>
+  </div>
+</div>
+<div id="open">STORM</div>
+
+<script>
+let W=null, STATS=null, DEFS=null;
+let layer='ri', month=new Date().getMonth()+1;
+let sel={lat:16.25, lng:127.5, cell:"15.0,127.5"};
+const FIELDS=[
+ ["WIND","WIND KT"],["PRES","PRES HPA"],
+ ["DWIND_24","ΔWIND 24H"],["DWIND_12","ΔWIND 12H"],
+ ["DWIND_6","ΔWIND 6H"],["DPRES_6","ΔPRES 6H"],
+ ["DPRES_24","ΔPRES 24H"],["SST","SST °C"],
+ ["DIST2LAND","TO LAND KM"],["SPEED","MOTION KT"]];
+const form=document.getElementById('form');
+FIELDS.forEach(([k,l])=>{ const d=document.createElement('div'); d.className='fld';
+  d.innerHTML=`<label>${l}</label><input id="in-${k}" type="number" step="any">`; form.appendChild(d); });
+const msel=document.getElementById('month');
+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].forEach((n,i)=>{
+  const o=document.createElement('option'); o.value=i+1; o.textContent=n; if(i+1===month)o.selected=true; msel.appendChild(o); });
+msel.onchange=()=>{ month=+msel.value; applyCell(); drawLayer(); };
+document.getElementById('hide').onclick=()=>{ document.getElementById('panel').style.display='none'; document.getElementById('open').style.display='block'; };
+document.getElementById('open').onclick=()=>{ document.getElementById('panel').style.display='block'; document.getElementById('open').style.display='none'; };
+
+function cellKey(lat,lng){ return (Math.floor(lat/2.5)*2.5).toFixed(1)+","+(Math.floor(lng/2.5)*2.5).toFixed(1); }
+function scaleColor(t){
+  const stops=[[43,131,186],[90,180,172],[166,219,160],[254,224,139],[253,174,97],[215,25,28]];
+  t=Math.max(0,Math.min(1,t)); const x=t*(stops.length-1), i=Math.floor(x), f=x-i;
+  const a=stops[i], b=stops[Math.min(i+1,stops.length-1)];
+  return `rgb(${a.map((v,j)=>Math.round(v+(b[j]-v)*f)).join(',')})`;
+}
+const world = Globe()(document.getElementById('globe'))
+  .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
+  .backgroundColor('#000000').showAtmosphere(true).atmosphereColor('#2c4a63').atmosphereAltitude(0.1)
+  .pointLat('lat').pointLng('lng').pointRadius(1.15).pointAltitude(0.012).pointColor('color')
+  .labelLat('lat').labelLng('lng').labelText('label').labelSize(1.2).labelColor(()=> '#e8eef1')
+  .pointOfView({lat:20, lng:127, altitude:1.55}, 0)
+  .onGlobeClick(({lat,lng})=>{ pick(lat,lng); });
+
+function drawLayer(){
+  if(!STATS||layer==='off'){ world.pointsData([]); setScale(); return; }
+  const pts=[];
+  for(const [k,s] of Object.entries(STATS)){
+    const [a,b]=k.split(',').map(Number);
+    let v, t;
+    if(layer==='ri'){ v=s.ri_pct; t=v/8; }
+    else { const d=DEFS[k+','+month]; if(!d) continue; v=d.SST; t=(v-19)/12; }
+    pts.push({lat:a+1.25, lng:b+1.25, color:scaleColor(t),
+      label:`${(a+1.25).toFixed(1)}N ${(b+1.25).toFixed(1)}E ${layer==='ri' ? 'RI '+v+'%' : 'SST '+v+'C'}`});
+  }
+  world.pointsData(pts); setScale();
+}
+function setScale(){
+  const[a,c]= layer==='sst' ? ['19C','31C'] : ['0%','8%+'];
+  sv1.textContent=a; sv3.textContent=c;
+  document.getElementById('scalebar').style.opacity = layer==='off' ? .2 : 1;
+}
+function pick(lat,lng){
+  sel.lat=lat; sel.lng=lng; sel.cell=cellKey(lat,lng); applyCell();
+  world.labelsData([{lat,lng,label:lat.toFixed(1)+'N '+lng.toFixed(1)+'E'}]);
+}
+function applyCell(){
+  const s=STATS && STATS[sel.cell], d=DEFS && DEFS[sel.cell+','+month];
+  const lr=document.getElementById('locread');
+  lr.innerHTML = s
+    ? `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · ${s.storms} storms since 2000 · RI ${s.ri_pct}% · weak ${s.weaken_pct}%`
+    : `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · no storms recorded in this cell`;
+  const fb={WIND:65,PRES:990,DWIND_24:5,DWIND_12:5,DWIND_6:0,DPRES_6:-2,DPRES_24:-5,SST:29,DIST2LAND:300,SPEED:8};
+  FIELDS.forEach(([k])=>{ document.getElementById('in-'+k).value = d && d[k]!==undefined ? d[k] : fb[k]; });
+  conds();
+}
+function vals(){
+  const v={}; FIELDS.forEach(([k])=> v[k]=parseFloat(document.getElementById('in-'+k).value)||0);
+  v.LAT=sel.lat; v.LON=sel.lng; v.MONTH=month; return v;
+}
+function predict(){
+  if(!W) return;
+  const v=vals();
+  const x=W.features.map((f,i)=>(v[f]-W.scaler_mean[i])/W.scaler_scale[i]);
+  const z=W.classes.map((c,ci)=> W.intercept[ci] + x.reduce((s,xi,j)=> s+xi*W.coef[ci][j],0));
+  const mx=Math.max(...z); const e=z.map(t=>Math.exp(t-mx)); const sum=e.reduce((a,b)=>a+b,0);
+  const P={}; W.classes.forEach((c,i)=> P[c]=e[i]/sum);
+  const pct=k=>Math.round(P[k]*1000)/10;
+  document.getElementById('result').style.display='block';
+  [['RI','b-ri','p-ri'],['WEAKEN','b-we','p-we'],['STEADY','b-st','p-st']].forEach(([k,b,p])=>{
+    document.getElementById(b).style.width=(P[k]*100)+'%'; document.getElementById(p).textContent=pct(k)+'%'; });
+  const vd=document.getElementById('verdict'); vd.style.display='block';
+  const T=W.warning_threshold;
+  if(P.RI>=T){ vd.className='v-ri'; vd.innerHTML=`<b>RI WATCH</b> — prepare. Not an evacuation order.`; }
+  else if(P.WEAKEN>=T){ vd.className='v-we'; vd.innerHTML=`<b>RAPID WEAKENING LIKELY</b> — wind threat falls; flood risk may persist.`; }
+  else { vd.className='v-st'; vd.innerHTML=`<b>STEADY</b> — no rapid change likely in 24 h.`; }
+  conds();
+}
+function conds(){
+  const v=vals();
+  const d=DEFS && DEFS[sel.cell+','+month];
+  const anom = d ? (v.SST-d.SST) : 0;
+  const r=(cls,m,txt)=>`<div><span class="${cls}">${m}</span> ${txt}</div>`;
+  document.getElementById('conds').innerHTML =
+    r(v.SST>=26.5?'ok':'bad', v.SST>=26.5?'+':'−', `SST ${v.SST}°C${d?` (${anom>=0?'+':''}${anom.toFixed(1)} vs usual)`:''}`) +
+    r(Math.abs(sel.lat)>=5?'ok':'bad', Math.abs(sel.lat)>=5?'+':'−', `Coriolis ${Math.abs(sel.lat).toFixed(1)}°`) +
+    r(v.WIND>=34?'ok':'bad', v.WIND>=34?'+':'−', `Storm exists ${v.WIND} kt`) +
+    r(v.DIST2LAND>150?'ok':'bad', v.DIST2LAND>150?'+':'−', `Open water ${v.DIST2LAND} km`) +
+    r('na','·','Instability — no data') +
+    r('na','·','Humidity — no data') +
+    r('na','·','Shear — no data');
+}
+document.getElementById('predict').onclick=predict;
+document.querySelectorAll('.lay').forEach(b=> b.onclick=()=>{ document.querySelectorAll('.lay').forEach(x=>x.classList.remove('on')); b.classList.add('on'); layer=b.dataset.lay; drawLayer(); });
+Promise.all([fetch('model_weights.json').then(r=>r.json()), fetch('region_stats.json').then(r=>r.json()), fetch('region_defaults.json').then(r=>r.json())])
+ .then(([w,s,d])=>{ W=w; STATS=s; DEFS=d; applyCell(); drawLayer(); })
+ .catch(e=>{ document.getElementById('locread').textContent='JSON files missing — they must sit next to index.html.'; });
+</script>
+</body>
+</html>
