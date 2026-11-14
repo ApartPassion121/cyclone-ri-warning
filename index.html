@@ -163,6 +163,19 @@ const world = Globe()(document.getElementById('globe'))
   .pointOfView({lat:20, lng:127, altitude:1.55}, 0)
   .onGlobeClick(({lat,lng})=>{ pick(lat,lng); });
 
+/* Pinpoint clicks in EVERY shape mode. Overlay layers (cell meshes, the heatmap
+   surface) can swallow the raycast behind onGlobeClick, so compute the clicked
+   coordinates from the click itself; drags (globe rotation) are ignored. */
+let downPos=null;
+const globeEl=document.getElementById('globe');
+globeEl.addEventListener('mousedown', e=>{ downPos=[e.clientX, e.clientY]; });
+globeEl.addEventListener('click', e=>{
+  if(downPos && Math.hypot(e.clientX-downPos[0], e.clientY-downPos[1])>5) return;
+  const r=globeEl.getBoundingClientRect();
+  const c=world.toGlobeCoords(e.clientX-r.left, e.clientY-r.top);
+  if(c) pick(c.lat, c.lng);
+});
+
 try {  // lift the very dark basemap a touch so the continents read
   const m=world.globeMaterial();
   m.bumpScale=4; m.shininess=7;
@@ -263,7 +276,9 @@ function cellMesh(d){
   }
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
-  return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:d.color, transparent:true, opacity:0.92, side:THREE.DoubleSide}));
+  const mesh=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:d.color, transparent:true, opacity:0.92, side:THREE.DoubleSide}));
+  mesh.raycast=()=>{};  // clicks must pass through the tile to the globe, or onGlobeClick never fires
+  return mesh;
 }
 function polyOf(c){
   const pad=1.32;  // slight overlap so neighbouring cells leave no seam
