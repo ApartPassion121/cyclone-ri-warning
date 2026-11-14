@@ -7,6 +7,7 @@ An AI system that predicts whether an existing tropical cyclone will rapidly int
 
 ## Desired outcomes
 
+
 - A user can select a location on an interactive 3D globe.
 - The system shows the selected location's historical tropical-cyclone activity.
 - The user can enter the current storm values and the region's environmental factor values.
