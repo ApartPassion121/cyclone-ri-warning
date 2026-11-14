@@ -6,6 +6,7 @@
 <title>Cyclone RI Warning</title>
 <script src="https://unpkg.com/globe.gl@2.31.0/dist/globe.gl.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#000; color:#cfd8dc; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; overflow:hidden; font-size:11px; }
@@ -143,6 +144,9 @@ const world = Globe()(document.getElementById('globe'))
   .polygonSideColor(()=> '#0b131a')
   .polygonStrokeColor(()=> '#0e1a24')
   .polygonLabel(d=>d.properties.tip)
+  // custom geometry: cells are drawn as our own sphere-hugging meshes (the polygon cap fill renders as shards)
+  .customThreeObject(d=>cellMesh(d))
+  .customThreeObjectUpdate(obj=>{ obj.position.set(0,0,0); })
   // heatmap geometry: smooth KDE surface field
   .heatmapPointLat('lat').heatmapPointLng('lng').heatmapPointWeight('w')
   .heatmapBandwidth(1.9).heatmapColorSaturation(1.15)
@@ -246,6 +250,21 @@ function tipOf(lat,lng,s,v){
     ? `${head} · RI ${s.ri_pct}% · weaken ${s.weaken_pct}% · ${n}`
     : `${head} · SST ${v}°C · ${n}`;
 }
+function cellMesh(d){
+  // one cell = a 3x3 grid of points projected onto the sphere, triangulated here.
+  // Vertices are in world coordinates; the update hook pins the object at the origin.
+  const n=3, half=1.32, verts=[], grid=[];
+  const P=(la,lo)=>{ const c=world.getCoords(la,lo,0.0032); return [c.x,c.y,c.z]; };
+  for(let i=0;i<=n;i++){ grid[i]=[];
+    for(let j=0;j<=n;j++) grid[i][j]=P(d.lat-half+2*half*i/n, d.lng-half+2*half*j/n); }
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++){
+    const a=grid[i][j], b=grid[i+1][j], c2=grid[i][j+1], e=grid[i+1][j+1];
+    verts.push(...a,...b,...c2, ...b,...e,...c2);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+  return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:d.color, transparent:true, opacity:0.92, side:THREE.DoubleSide}));
+}
 function polyOf(c){
   const pad=1.32;  // slight overlap so neighbouring cells leave no seam
   return {type:'Feature', properties:{color:washColor(c.t,0.2), tip:c.tip},
@@ -279,7 +298,8 @@ function redraw(){
   const cs=cells();
   const pts=(shape==='columns'||shape==='dots') ? cs.map(dotOf) : [];
   world.pointsData(pts.concat([markerPoint()]));
-  world.polygonsData(shape==='cells' ? cs.map(polyOf) : []);
+  world.customLayerData(shape==='cells' ? cs.map(c=>({lat:c.lat, lng:c.lng, color:washColor(c.t,0.2)})) : []);
+  world.polygonsData([]);
   world.heatmapsData(shape==='field' ? [cs.map(fieldOf)] : []);
   world.ringsData([{lat:sel.lat,lng:sel.lng,color:['rgba(255,198,138,0.8)','rgba(255,198,138,0)']}]);
   world.labelsData([{lat:sel.lat,lng:sel.lng,label:selLabel()}]);
