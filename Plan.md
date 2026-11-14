@@ -25,7 +25,7 @@
 
 ## Step 2 — Create the notebook
 
-- [ ] Open Google Colab using my personal Google account.
+- [ ] Open Kaggle using my personal Google account.
 - [ ] Create a notebook named `cyclone_ri_warning.ipynb`.
 - [ ] Add the project title and this one-sentence description:
 
