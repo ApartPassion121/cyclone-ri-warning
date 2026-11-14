@@ -218,30 +218,55 @@ delta_24h = wind_24h_later - wind_now
 - [x] Test the globe with the three saved Python examples.
 - [x] Do not continue until the JavaScript probabilities match the Python probabilities.
 
-## Step 16 — Test the complete product
+## Step 16 — Test the ERA5 environment upgrade (added Sat Nov 14)
+
+- [x] Create a Copernicus CDS account and accept the CC BY licences for both ERA5 monthly datasets.
+- [x] Download ERA5 monthly means 2000–2020 for the corridor: pressure levels (u, v, humidity at 200/700/850 hPa) and single levels (CAPE).
+- [x] Build a climatology: one typical SHEAR, RH700 and CAPE value per 2.5° cell × month, training years only (no leakage into the 2021–2025 test).
+- [x] Retrain with the extra features and compare at the warning threshold t = 0.25: 15 features RI 91.6% / WEAKEN 90.4%; 14 (+CAPE) RI 90.9% / 89.9%; 16 (+all three) RI 90.9% / 90.4% — none holds the shipped model's RI 92.9%.
+- [x] Verdict: NOT adopted. A monthly average gives every storm in a cell and month the same values, so it cannot separate the one storm that explodes. Recorded in the notebook as Step 15.
+- [x] Keep the climatology values as displayed context on the globe's conditions panel (typical shear / humidity / CAPE for the place and month).
+
+## Step 17 — Add the 24-hour track forecast (added Sat Nov 14)
+
+- [x] Build the track target: each storm point's actual movement over the next 24 hours, plus its motion over the last 6 hours.
+- [x] Compare four methods on the unseen years 2021–2025: persistence 411 km mean error; climatology (typical move per cell × month) 371 km; linear regression 377 km; blend of persistence + climatology 358 km.
+- [x] Ship the blend for live storms (uses their real motion) and climatology for clicked cells; print the honest mean error next to the forecast.
+- [x] Export `track_climatology.json` (1,594 cell-months) from the notebook (notebook Step 16) and stage it for the repo.
+- [ ] Wire the track arrow into the globe: line from the storm's position to the predicted position 24 hours later.
+
+## Step 18 — Add live storms (added Sat Nov 14)
+
+- [x] Verify a live source: IBTrACS ACTIVE (NOAA NCEI) — the same dataset family as the training archive, with provisional rows for storms in progress.
+- [x] Build `live_storms.json`: each active West Pacific storm's latest position, its real 13 features from its own last 24 hours of reports, the model's probabilities, and its blend track. (Current entry: Cempaka/Samuel's last tracked point.)
+- [x] Write the refresher: `update_live.py` plus a GitHub Action (`live.yml`, every 6 hours) that rebuilds the file and commits it — no server needed.
+- [ ] Upload `live_storms.json`, `track_climatology.json`, `update_live.py` and `.github/workflows/live.yml` to the repo.
+- [ ] Show live storms on the globe with a LIVE marker; clicking one loads its real values into the panel.
+
+## Step 19 — Test the complete product
 
 - [ ] Run the notebook from the beginning without errors.
-- [ ] Open the globe locally and test location selection.
-- [ ] Test one likely intensification example.
+- [x] Open the globe and test location selection (live site, Sat Nov 14).
+- [x] Test one likely intensification example (east of Mindanao defaults → RI WATCH).
 - [ ] Test one likely weakening example.
 - [ ] Test one likely steady example.
 - [ ] Check the layout on a desktop screen and a phone-sized screen.
 - [ ] Fix errors before recording the demonstration.
 
-## Step 17 — Finish the repository documentation
+## Step 20 — Finish the repository documentation
 
-- [ ] Update `README.md` with:
+- [x] Update `README.md` with:
   - what the project does;
   - how to run the notebook;
   - how to open the globe;
   - the data source;
   - the main results;
   - the limitations.
-- [ ] Add the IBTrACS citation and DOI to the notebook and README.
+- [x] Add the IBTrACS citation and DOI to the notebook and README.
 - [ ] Add citations for every library and dataset used.
-- [ ] Commit the notebook, processed-data documentation, model weights, region statistics, and web files.
+- [ ] Commit the notebook (.ipynb from Kaggle Version 6), processed-data documentation, model weights, region statistics, and web files. (Weights, statistics and web files are in; the .ipynb upload is still outstanding.)
 
-## Step 18 — Write the project report
+## Step 21 — Write the project report
 
 - [ ] Write the problem.
 - [ ] Write what I built.
@@ -254,7 +279,7 @@ delta_24h = wind_24h_later - wind_now
 - [ ] List all sources.
 - [ ] Add the required AI-assistance disclosure.
 
-## Step 19 — Record and submit
+## Step 22 — Record and submit
 
 - [ ] Record a demonstration of two minutes or less.
 - [ ] Show the globe, location selection, factor inputs, and three probabilities.
@@ -263,3 +288,9 @@ delta_24h = wind_24h_later - wind_now
 - [ ] Test the public repository and globe links while signed out.
 - [ ] Submit the repository link, write-up, and demonstration video.
 - [ ] Save the submission confirmation.
+
+## Progress log
+
+- **Sat Nov 14, morning:** Model locked (logistic regression + SST + pressure trend, t = 0.25): RI 92.9%, WEAKEN 89.9% on 2021–2025. Globe live and verified. Extra validation on Typhoon Noru (never used in training): RI 9/11, WEAKEN 4/4; both misses were the post-landfall "second wind-up", the same failure pattern as Rai.
+- **Sat Nov 14, midday:** ERA5 upgrade tested and honestly rejected (Step 16 above). Live replay of Typhoon Samuel (Cempaka) from IBTrACS ACTIVE: at Nov 9, 06:00 UTC the model said RI 92.9% with Samuel's real numbers, but its actual next-24-hour change was +5 kt — a confident false alarm caused by momentum overshoot right after its own intensification finished. Kept for the report's limitations.
+- **Sat Nov 14, afternoon:** Track forecast added (Step 17) and live mode built (Step 18). Kaggle notebook updated to Version 6: Step 15 = ERA5 verdict, Step 16 = track (self-healing: downloads IBTrACS itself in a fresh session; printed 411/371/358/377 km), Step 17 = live mode. Globe redesigned (dark Earth, drawn coastlines, shape options Cells/Field/Columns/Dots); verified: model math exact, SST layer works, Dots clean. Known issue: the Cells shape renders as jagged shards (globe.gl polygon rendering) and overloads the browser — use Dots as the default until fixed.
