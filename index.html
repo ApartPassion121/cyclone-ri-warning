@@ -46,6 +46,12 @@
   .fld label { display:block; font-size:9px; color:#697d87; letter-spacing:.06em; margin-bottom:1px; }
   .fld input { width:100%; background:#0a0f12; border:1px solid #26333b; color:#e8eef1; padding:3px 5px; font:inherit; font-size:11px; }
   .fld input:focus { outline:none; border-color:#71858f; }
+  #custom { display:flex; align-items:center; gap:5px; margin:5px 0 2px; }
+  #custom .k { color:#697d87; }
+  #custom input { width:60px; background:#0a0f12; border:1px solid #26333b; color:#e8eef1; padding:2px 4px; font:inherit; font-size:10px; }
+  #custom input:focus { outline:none; border-color:#71858f; }
+  #c-place { color:#8fd0ff; cursor:pointer; font-size:10px; letter-spacing:.08em; }
+  #c-place:hover { color:#c8e9ff; }
   #predict { width:100%; margin-top:8px; background:#b03a2e; color:#fff; border:none; padding:6px; font:inherit; font-size:11px; font-weight:600; letter-spacing:.12em; cursor:pointer; }
   #predict:hover { background:#c14436; }
   #result { margin-top:8px; display:none; }
@@ -132,6 +138,11 @@
   <div id="body">
     <div id="live"></div>
     <div id="locread">Click the globe.</div>
+    <div id="custom">
+      <span class="k">Custom</span>
+      <input id="c-lat" type="number" step="0.1" placeholder="lat °"><input id="c-lon" type="number" step="0.1" placeholder="lon °">
+      <span class="lnk" id="c-place">PLACE</span>
+    </div>
     <div id="monthnote"></div>
     <div class="grid" id="form"></div>
     <button id="predict">RUN</button>
@@ -162,6 +173,8 @@ const THIN_PTS=20;   // below this a cell's percentages are noise, not climatolo
 const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 let layer='ri', shape='cells', month=new Date().getMonth()+1;
 let sel={lat:16.25, lng:127.5, cell:"15.0,127.5"};
+// a storm placed by hand at exact coordinates rather than a cell click
+let selCustom=false;
 const FIELDS=[
  ["WIND","WIND KT"],["PRES","PRES HPA"],
  ["DWIND_24","ΔWIND 24H"],["DWIND_12","ΔWIND 12H"],
@@ -180,6 +193,28 @@ MONTHS.forEach((n,i)=>{
 msel.onchange=()=>{ month=+msel.value; liveTrack=null; applyCell(); redraw(); };
 document.getElementById('hide').onclick=()=>{ document.getElementById('panel').style.display='none'; document.getElementById('open').style.display='block'; };
 document.getElementById('open').onclick=()=>{ document.getElementById('panel').style.display='block'; document.getElementById('open').style.display='none'; };
+/* A storm the archive never had: place it at exact coordinates, then edit its
+   features in the form and RUN. The 24 h forecast keeps the typical direction
+   for the cell it sits in and uses the motion you typed. */
+function placeCustom(){
+  const la=parseFloat(document.getElementById('c-lat').value);
+  const lo=parseFloat(document.getElementById('c-lon').value);
+  const box=document.getElementById('custom');
+  if(!Number.isFinite(la)||!Number.isFinite(lo)||Math.abs(la)>90||Math.abs(lo)>180){
+    box.style.color='#c9a227'; return; }
+  box.style.color='';
+  selCustom=true; liveTrack=null;
+  sel.lat=la; sel.lng=lo; sel.cell=cellKey(la,lo);
+  const r=regionFor(la,lo); if(r) adopt(r);
+  applyCell();
+  const sp=document.getElementById('in-SPEED');
+  if(sp && !sp.value) sp.value=12;
+  redraw(); predict();
+  const p=world.pointOfView();
+  world.pointOfView({lat:la, lng:lo, altitude:Math.min(p.altitude,1.4)}, 900);
+}
+document.getElementById('c-place').onclick=placeCustom;
+['c-lat','c-lon'].forEach(id=> document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') placeCustom(); }));
 
 /* ---------- colour scale (also drives the field layer) ---------- */
 const STOPS=[[43,131,186],[90,180,172],[166,219,160],[254,224,139],[253,174,97],[215,25,28]];
@@ -446,8 +481,9 @@ function renderLive(){
   }).join('');
   box.querySelectorAll('.lstorm').forEach(el=> el.onclick=()=>loadLive(+el.dataset.i));
 }
-function loadLive(i){
+function   loadLive(i){
   const st=LIVE.storms[i]; if(!st) return;
+  selCustom=false;
   sel.lat=st.lat; sel.lng=st.lon; sel.cell=cellKey(st.lat, st.lon);
   month=st.features.MONTH; msel.value=month;
   liveTrack={fromLat:st.lat, fromLng:st.lon, lat:st.track_24h.lat, lng:st.track_24h.lon};
@@ -459,20 +495,53 @@ function loadLive(i){
 }
 
 /* ---------- track forecast (typical 24 h movement for the cell + month) ---------- */
-function trackEntry(){
+/* 24 h movement for a cell. Outside the old corridor a cell-month often has a
+   handful of storms or none, which used to mean no forecast at all, so fall
+   back in order: this cell and month, this cell's nearest month, then the ring
+   of neighbouring cells. The source travels with the vector so the panel can
+   say which one it used. */
+function trackFor(cell, m){
   if(!TRACK) return null;
-  const [a,b]=sel.cell.split(',').map(Number);
-  return TRACK[(a+1.25).toFixed(2)+','+(b+1.25).toFixed(2)+','+month] || null;
+  const [a,b]=cell.split(',').map(Number);
+  const ck=(la,lo)=>(la+1.25).toFixed(2)+','+(lo+1.25).toFixed(2);
+  const exact=TRACK[ck(a,b)+','+m];
+  if(exact && exact.n>=5) return Object.assign({src:'this cell', months:0}, exact);
+  for(let d2=1; d2<12; d2++){
+    for(const mm of [m-d2, m+d2]){
+      const m2=((mm-1+12)%12)+1;
+      const e2=TRACK[ck(a,b)+','+m2];
+      if(e2 && e2.n>=5) return Object.assign({src:`this cell, ${MONTHS[m2-1]}`, months:d2}, e2);
+    }
+  }
+  let n=0, dLat=0, dLon=0, cells=0;
+  for(const dx of [-2.5,0,2.5]) for(const dy of [-2.5,0,2.5]){
+    if(!dx && !dy) continue;
+    const e3=TRACK[ck(a+dx,b+dy)+','+m];
+    if(e3 && e3.n){ n+=e3.n; dLat+=e3.dLat*e3.n; dLon+=e3.dLon*e3.n; cells++; }
+  }
+  if(n>=10) return {dLat:dLat/n, dLon:dLon/n, n, src:`${cells} neighbouring cells`, months:0};
+  return null;
 }
+function trackEntry(){ return trackFor(sel.cell, month); }
 function compass(dLat,dLon){
   const dirs=['E','NE','N','NW','W','SW','S','SE'];
   const ang=Math.atan2(dLat,dLon)*180/Math.PI;
   return dirs[Math.round(((ang+360)%360)/45)%8];
 }
+/* A custom storm is wherever the user put it, not a cell centre, and it carries
+   its own speed: keep the typical direction, replace the typical speed. */
 function trackEnd(){
-  const t=trackEntry(); if(!t || t.n<5) return null;
+  const t=trackEntry(); if(!t) return null;
   const [a,b]=sel.cell.split(',').map(Number);
-  return {lat:a+1.25+t.dLat, lng:b+1.25+t.dLon, fromLat:a+1.25, fromLng:b+1.25, t};
+  const from = selCustom ? {lat:sel.lat, lng:sel.lng} : {lat:a+1.25, lng:b+1.25};
+  let dLat=t.dLat, dLon=t.dLon, via='typical speed';
+  const sp=vals().SPEED;
+  if(selCustom && Number.isFinite(sp) && sp>0){
+    const kmLat=t.dLat*111, kmLon=t.dLon*111*Math.cos(from.lat*Math.PI/180);
+    const mag=Math.hypot(kmLat, kmLon);
+    if(mag>1){ const k=(sp*1.852*24)/mag; dLat*=k; dLon*=k; via='your motion'; }
+  }
+  return {lat:from.lat+dLat, lng:from.lng+dLon, fromLat:from.lat, fromLng:from.lng, t, via};
 }
 function trackPaths(){
   if(liveTrack){
@@ -483,14 +552,14 @@ function trackPaths(){
   const e=trackEnd(); if(!e) return [];
   const pts=[];
   for(let i=0;i<=8;i++) pts.push([e.fromLat+(e.lat-e.fromLat)*i/8, e.fromLng+(e.lng-e.fromLng)*i/8]);
-  return [P(pts,'#7fb6d9',2.2,0.01)];
+  return [P(pts, selCustom?'#8fd0ff':'#7fb6d9', 2.2, 0.01)];
 }
 function trackPoint(){
   if(liveTrack) return {lat:liveTrack.lat, lng:liveTrack.lng, color:'#ffb35c', r:0.3, alt:0.012,
     tip:'24 h position · blend of storm motion + climatology · mean error 358 km'};
   const e=trackEnd(); if(!e) return null;
   return {lat:e.lat, lng:e.lng, color:'#8fd0ff', r:0.3, alt:0.012,
-    tip:`24 h position · climatology from ${e.t.n} past storms · mean error 371 km`};
+    tip:`24 h position · ${e.t.src} · ${e.t.n} past storms · ${e.via} · mean error ${TRACK_ERR.clim} km`};
 }
 /* The README promises the track's measured error is shown next to the forecast,
    not hidden: blend = 358 km, climatology = 371 km mean error on the 2021-25 test years. */
@@ -502,7 +571,7 @@ function trackInfo(){
   box.style.display='block';
   box.innerHTML = liveTrack
     ? `<span class="k2">24 h track</span> ${e.lat.toFixed(1)}N ${e.lng.toFixed(1)}E <span class="k2">· storm motion + climatology · mean error ${TRACK_ERR.blend} km</span>`
-    : `<span class="k2">24 h track</span> ${e.lat.toFixed(1)}N ${e.lng.toFixed(1)}E <span class="k2">· climatology, ${e.t.n} past storms · mean error ${TRACK_ERR.clim} km</span>`;
+    : `<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· ${e.t.src}${e.t.months?' (nearest month)':''}, ${e.t.n} past storms · ${e.via} · mean error ${TRACK_ERR.clim} km</span>`;
 }
 
 /* ---------- selection marker ---------- */
@@ -511,7 +580,7 @@ function markerPoint(){
     tip:`${fmtLat(sel.lat)} ${fmtLng(sel.lng)} · selected`};
 }
 function selLabel(){
-  return `${sel.lat.toFixed(1)}N ${sel.lng.toFixed(1)}E`;
+  return `${selCustom?'CUSTOM · ':''}${fmtLat(sel.lat)} ${fmtLng(sel.lng)}`;
 }
 
 /* ---------- render ---------- */
@@ -589,12 +658,15 @@ function pick(lat,lng){
   // selection redraw once per tap instead of twice.
   if(cell===lastPickCell && now-lastPick<250) return;
   lastPick=now; lastPickCell=cell;
-  liveTrack=null;
+  liveTrack=null; selCustom=false;
   sel.lat=lat; sel.lng=lng; sel.cell=cell;
   // switch model before painting the cell, or the readout and the pre-filled form
   // come from the region the previous click landed in
   const reg=regionFor(lat,lng); if(reg) adopt(reg);
   applyCell();
+  // keep the hand-entry boxes in step with the click, so PLACE can nudge from here
+  const cl=document.getElementById('c-lat'), cn=document.getElementById('c-lon');
+  if(cl){ cl.value=lat.toFixed(1); cn.value=lng.toFixed(1); }
   const res=document.getElementById('result');
   if(res) res.style.display='none';   // stale result from the previous cell must not linger
   const vd=document.getElementById('verdict');
@@ -645,9 +717,10 @@ function monthNote(d){
 }
 function applyCell(){
   const s=STATS && STATS[sel.cell], d=defsFor(sel.cell, month);
+  const tag = selCustom ? ' <span style="color:#8fd0ff">custom</span>' : '';
   document.getElementById('locread').innerHTML = s
-    ? `<b>${fmtLat(sel.lat)} ${fmtLng(sel.lng)}</b> · ${s.storms} storm${s.storms===1?'':'s'} since 2000 · RI ${s.ri_pct}% · weak ${s.weaken_pct}%${s.points<THIN_PTS?` <span style="color:#c9a227">· ${s.points} points, low sample</span>`:` · ${s.points} points`}`
-    : `<b>${fmtLat(sel.lat)} ${fmtLng(sel.lng)}</b> · no storms recorded in this cell`;
+    ? `<b>${fmtLat(sel.lat)} ${fmtLng(sel.lng)}</b>${tag} · ${s.storms} storm${s.storms===1?'':'s'} since 2000 · RI ${s.ri_pct}% · weak ${s.weaken_pct}%${s.points<THIN_PTS?` <span style="color:#c9a227">· ${s.points} points, low sample</span>`:` · ${s.points} points`}`
+    : `<b>${fmtLat(sel.lat)} ${fmtLng(sel.lng)}</b>${tag} · no storms recorded in this cell`;
   const fb={WIND:65,PRES:990,DWIND_24:5,DWIND_12:5,DWIND_6:0,DPRES_6:-2,DPRES_24:-5,SST:29,DIST2LAND:300,SPEED:8};
   FIELDS.forEach(([k])=>{ document.getElementById('in-'+k).value = d && d[k]!==undefined ? d[k] : fb[k]; });
   conds();
@@ -778,6 +851,9 @@ function predict(){
   else if(P.WEAKEN>=T){ vd.className='v-we'; vd.innerHTML=`<b>RAPID WEAKENING LIKELY</b> — wind threat falls; flood risk may persist.`; }
   else { vd.className='v-st'; vd.innerHTML=`<b>STEADY</b> — no rapid change likely in 24 h.`; }
   conds();
+  // the 24 h position follows the motion that was just scored, so a custom
+  // storm's forecast moves when its speed changes
+  redrawSelection();
 }
 document.getElementById('predict').onclick=predict;
 document.querySelectorAll('.lay').forEach(b=> b.onclick=()=>{

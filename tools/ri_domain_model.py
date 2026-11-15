@@ -26,7 +26,9 @@ from sklearn.preprocessing import StandardScaler
 
 DOMAINS = {
     "wp":   {"basins": ["WP"],       "lat": (5, 40), "lon": (110, 180)},
-    "east": {"basins": ["WP", "EP"], "lat": (5, 40), "lon": (-180, -70)},
+    # the box runs 180 E to 70 W, so it also holds the central Pacific and the
+    # Gulf/Caribbean: leaving CP and NA out left those cells with no data at all
+    "east": {"basins": ["WP", "EP", "CP", "NA"], "lat": (5, 40), "lon": (-180, -70)},
 }
 
 SST_URL = ("https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21Agg_LonPM180.nc"
