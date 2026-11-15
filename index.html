@@ -742,8 +742,9 @@ function conds(){
     row(hasW?v.WIND>=COND_TH.wind:null,'Storm exists',hasW?`${v.WIND} kt · ≥${COND_TH.wind}`:'no value')+
     row(e?e.SHEAR<COND_TH.shear:null,'Wind shear',e?`${e.SHEAR} m/s · <${COND_TH.shear}`:'no data')+
     row(e?e.RH>=COND_TH.rh:null,'Humidity 700',e?`${e.RH}% · ≥${COND_TH.rh}`:'no data')+
-    row(e?e.CAPE>=COND_TH.cape:null,'Instability',e?`${e.CAPE} J/kg · ≥${COND_TH.cape}`:'no data')+
-    '<div class="note">first three are model inputs · ERA5 rows are typical for this cell &amp; month: context, not scored</div>';
+    row(e && e.CAPE!=null ? e.CAPE>=COND_TH.cape : null,'Instability',
+        e ? (e.CAPE!=null ? `${e.CAPE} J/kg · ≥${COND_TH.cape}` : 'no ERA5 CAPE here') : 'no data')+
+    `<div class="note">first three are model inputs · ${e && e.SRC==='ncep' ? 'NCEP/NCAR' : 'ERA5'} rows are typical for this cell &amp; month: context, not scored</div>`;
   box.style.display='block';
 }
 /* A cleared box is a missing measurement, not a zero: coercing it made an empty
