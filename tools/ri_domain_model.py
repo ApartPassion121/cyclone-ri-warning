@@ -210,6 +210,21 @@ def main():
         defaults[f"{clat},{clon},{int(m)}"] = {
             f: round(float(d[f].median()), 2) for f in keep_defaults}
 
+    # 24 h movement climatology on the site's grid (cell centre = origin + 1.25),
+    # training years only, so the page's track forecast reaches the new cells
+    lat0, lon0 = dom["lat"][0], dom["lon"][0]
+    tr = corridor.dropna(subset=["LAT_m6", "LON_m6", "LAT_p24", "LON_p24"]).copy()
+    tr = tr[tr["SEASON"] <= 2020]
+    tr["CLAT"] = (np.floor((tr["LAT"] - lat0) / 2.5) * 2.5 + lat0 + 1.25).round(2)
+    tr["CLON"] = (np.floor((tr["LON"] - lon0) / 2.5) * 2.5 + lon0 + 1.25).round(2)
+    tr["dLat"] = tr["LAT_p24"] - tr["LAT"]
+    tr["dLon"] = tr["LON_p24"] - tr["LON"]
+    track = {}
+    for (a, b, m), g in tr.groupby(["CLAT", "CLON", "MONTH"]):
+        track[f"{a},{b},{int(m)}"] = {"dLat": round(float(g.dLat.mean()), 3),
+                                      "dLon": round(float(g.dLon.mean()), 3),
+                                      "n": int(len(g))}
+
     scaler = model.named_steps["standardscaler"]
     logreg = model.named_steps["logisticregression"]
     weights = {
@@ -229,10 +244,12 @@ def main():
 
     for name, obj in [(f"model_weights_{args.domain}.json", weights),
                       (f"region_stats_{args.domain}.json", stats),
-                      (f"region_defaults_{args.domain}.json", defaults)]:
+                      (f"region_defaults_{args.domain}.json", defaults),
+                      (f"track_climatology_{args.domain}.json", track)]:
         with open(os.path.join(args.out, name), "w") as fh:
             json.dump(obj, fh, indent=1)
-    print(f"\ncells {len(stats)}  cell-month defaults {len(defaults)}  -> {args.out}")
+    print(f"\ncells {len(stats)}  cell-month defaults {len(defaults)}  "
+          f"track cell-months {len(track)}  -> {args.out}")
 
 
 if __name__ == "__main__":

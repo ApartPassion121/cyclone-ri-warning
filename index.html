@@ -325,10 +325,25 @@ function loadCoastlines(){
 /* Top of the RI scale = the highest rate among *well-sampled* cells, rounded up
    to 5, so the 11-20% corridor spreads across the ramp. Thin cells are excluded:
    one 33% rate from 12 points must not set the colour ceiling for the basin. */
+/* The layer draws every cell any loaded model has, not only the one the last
+   click landed in: panning to the eastern Pacific must not leave the globe
+   empty until a click switches models. Where two boxes touch (±180) the later
+   region wins; the domains do not otherwise overlap. */
+function allStats(){
+  if(!REGIONS.length) return STATS||{};
+  const m={};
+  for(const r of REGIONS) for(const k of Object.keys(r.STATS||{})) m[k]=r.STATS[k];
+  return m;
+}
 function riScale(){
-  const v=Object.values(STATS||{}).filter(s=>s.points>=THIN_PTS).map(s=>s.ri_pct).filter(x=>typeof x==='number');
+  const v=Object.values(allStats()).filter(s=>s.points>=THIN_PTS).map(s=>s.ri_pct).filter(x=>typeof x==='number');
   if(!v.length) return 8;
-  return Math.max(8, Math.ceil(Math.max(...v)/5)*5);
+  // With one basin the highest well-sampled rate was a sane ceiling. Across two
+  // it is not: a single 71% cell would push the whole map into the blue end, so
+  // take the 98th percentile and cap it, letting the rare top cells read "40%+".
+  v.sort((a,b)=>a-b);
+  const p98=v[Math.min(v.length-1, Math.max(0, Math.ceil(v.length*0.98)-1))];
+  return Math.min(40, Math.max(8, Math.ceil(p98/5)*5));
 }
 function cellVal(s,key){
   if(layer==='ri'){ if(!s) return null; return {v:s.ri_pct, t:s.ri_pct/RI_SCALE}; }
@@ -339,7 +354,7 @@ function cellVal(s,key){
 function cells(){
   const out=[];
   if(!STATS || layer==='off') return out;
-  for(const [k,s] of Object.entries(STATS)){
+  for(const [k,s] of Object.entries(allStats())){
     const [a,b]=k.split(',').map(Number);
     const val=cellVal(s,k); if(!val) continue;
     const t=Math.max(0,Math.min(1,val.t));
@@ -348,7 +363,7 @@ function cells(){
   return out;
 }
 function tipOf(lat,lng,s,v){
-  const head=`${lat.toFixed(1)}°N ${lng.toFixed(1)}°E`;
+  const head=`${fmtLat(lat)} ${fmtLng(lng)}`;
   const n=`${s.storms} storm${s.storms===1?'':'s'}`;
   const thin=s.points<THIN_PTS ? ` · only ${s.points} points, low sample` : ` · ${s.points} points`;
   return layer==='ri'
@@ -487,7 +502,7 @@ function trackInfo(){
 /* ---------- selection marker ---------- */
 function markerPoint(){
   return {lat:sel.lat,lng:sel.lng,color:'#ffc07a',r:0.14,alt:0.078,
-    tip:`${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E · selected`};
+    tip:`${fmtLat(sel.lat)} ${fmtLng(sel.lng)} · selected`};
 }
 function selLabel(){
   return `${sel.lat.toFixed(1)}N ${sel.lng.toFixed(1)}E`;
@@ -525,7 +540,7 @@ let PTS_CACHE=null, PTS_KEY='';
    three-globe fresh objects made it rebuild all 183 cylinders each time. */
 function dataPoints(){
   if(shape!=='columns' && shape!=='dots') return [];
-  const key=layer+'|'+shape+'|'+month;
+  const key=layer+'|'+shape+'|'+month+'|'+REGIONS.length;
   if(PTS_KEY!==key || !PTS_CACHE){ PTS_CACHE=cells().map(dotOf); PTS_KEY=key; }
   return PTS_CACHE;
 }
@@ -554,7 +569,7 @@ function scaleCaption(){
     el.textContent='all-season'+(thin?` · ${thin} thin cells dimmed (<${THIN_PTS} points)`:'');
     return;
   }
-  const have=cells().length, all=STATS ? Object.keys(STATS).length : 0;
+  const have=cells().length, all=Object.keys(allStats()).length;
   el.textContent=`SST · ${MONTHS[month-1]} · ${have}/${all} cells`;
 }
 
@@ -567,7 +582,11 @@ function pick(lat,lng){
   if(cell===lastPickCell && now-lastPick<250) return;
   lastPick=now; lastPickCell=cell;
   liveTrack=null;
-  sel.lat=lat; sel.lng=lng; sel.cell=cell; applyCell();
+  sel.lat=lat; sel.lng=lng; sel.cell=cell;
+  // switch model before painting the cell, or the readout and the pre-filled form
+  // come from the region the previous click landed in
+  const reg=regionFor(lat,lng); if(reg) adopt(reg);
+  applyCell();
   const res=document.getElementById('result');
   if(res) res.style.display='none';   // stale result from the previous cell must not linger
   const vd=document.getElementById('verdict');
@@ -619,8 +638,8 @@ function monthNote(d){
 function applyCell(){
   const s=STATS && STATS[sel.cell], d=defsFor(sel.cell, month);
   document.getElementById('locread').innerHTML = s
-    ? `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · ${s.storms} storm${s.storms===1?'':'s'} since 2000 · RI ${s.ri_pct}% · weak ${s.weaken_pct}%${s.points<THIN_PTS?` <span style="color:#c9a227">· ${s.points} points, low sample</span>`:` · ${s.points} points`}`
-    : `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · no storms recorded in this cell`;
+    ? `<b>${fmtLat(sel.lat)} ${fmtLng(sel.lng)}</b> · ${s.storms} storm${s.storms===1?'':'s'} since 2000 · RI ${s.ri_pct}% · weak ${s.weaken_pct}%${s.points<THIN_PTS?` <span style="color:#c9a227">· ${s.points} points, low sample</span>`:` · ${s.points} points`}`
+    : `<b>${fmtLat(sel.lat)} ${fmtLng(sel.lng)}</b> · no storms recorded in this cell`;
   const fb={WIND:65,PRES:990,DWIND_24:5,DWIND_12:5,DWIND_6:0,DPRES_6:-2,DPRES_24:-5,SST:29,DIST2LAND:300,SPEED:8};
   FIELDS.forEach(([k])=>{ document.getElementById('in-'+k).value = d && d[k]!==undefined ? d[k] : fb[k]; });
   conds();
