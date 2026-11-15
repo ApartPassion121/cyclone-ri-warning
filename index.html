@@ -190,8 +190,9 @@ const world = Globe()(document.getElementById('globe'))
   // rings: ripple at the selected cell
   .ringLat(d=>d.lat).ringLng(d=>d.lng).ringColor(d=>d.color)
   .ringMaxRadius(2.8).ringPropagationSpeed(1.25).ringRepeatPeriod(1400).ringAltitude(0.007)
+  .pointsTransitionDuration(0)
   .labelLat(d=>d.lat).labelLng(d=>d.lng).labelText('label').labelSize(0.85)
-  .labelColor(()=> '#ffe2bd').labelAltitude(0.086).labelIncludeDot(true).labelDotRadius(0.16)
+  .labelColor(()=> '#ffe2bd').labelAltitude(0.086).labelIncludeDot(true).labelDotRadius(0.16).labelsTransitionDuration(0)
   .pointOfView({lat:20, lng:127, altitude:1.55}, 0)
   .onGlobeClick(({lat,lng})=>{ pick(lat,lng); });
 
@@ -204,7 +205,7 @@ globeEl.addEventListener('pointerdown', e=>{ downPos=[e.clientX, e.clientY]; });
 globeEl.addEventListener('pointerup', e=>{
   if(!downPos) return;
   const moved=Math.hypot(e.clientX-downPos[0], e.clientY-downPos[1]); downPos=null;
-  if(moved>10) return;   // it was a drag (globe rotation), not a tap
+  if(moved>30) return;   // it was a drag (globe rotation), not a tap - trackpad clicks drift several px
   const r=globeEl.getBoundingClientRect();
   const c=world.toGlobeCoords(e.clientX-r.left, e.clientY-r.top);
   if(c) pick(c.lat, c.lng);
@@ -425,11 +426,7 @@ function markerPoint(){
     tip:`${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E · selected`};
 }
 function selLabel(){
-  const s=STATS && STATS[sel.cell], d=DEFS && DEFS[sel.cell+','+month];
-  let txt=`${sel.lat.toFixed(1)}N ${sel.lng.toFixed(1)}E`;
-  if(layer==='ri' && s) txt+=`  RI ${s.ri_pct}%`;
-  if(layer==='sst' && d && d.SST!==undefined) txt+=`  SST ${d.SST}C`;
-  return txt;
+  return `${sel.lat.toFixed(1)}N ${sel.lng.toFixed(1)}E`;
 }
 
 /* ---------- render ---------- */
@@ -578,6 +575,7 @@ function windObject(){
   windGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(WIND_N*(TRAIL-1)*6), 3));
   const lines=new THREE.LineSegments(windGeo, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false}));
   lines.raycast=()=>{};
+  lines.renderOrder=10;   // draw AFTER the Field heatmap surface, which otherwise paints over the flow
   windGroup=new THREE.Group(); windGroup.add(lines);
   return windGroup;
 }
