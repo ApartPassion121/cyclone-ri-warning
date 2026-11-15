@@ -43,3 +43,36 @@ for sid, g in df[df['BASIN']=='WP'].groupby('SID'):
                       'method': 'blend of storm motion + typical path (test mean error 358 km)'}})
 json.dump(out, open('live_storms.json','w'), indent=1)
 print('storms:', [s['name'] for s in out['storms']])
+
+# --- wind.json: whole-globe 10 m wind snapshot from Open-Meteo (free, no key) ---
+# Baked into a static file so the page itself makes no API calls. A failure here
+# must never block the storms update, hence the try/except.
+import time
+try:
+    STEP = 2.5
+    lats = [87.5-STEP*i for i in range(71)]
+    lons = [STEP*i for i in range(144)]
+    pts = [(la, lo) for la in lats for lo in lons]
+    U = [None]*len(pts); V = [None]*len(pts); reftime = None
+    for st in range(0, len(pts), 40):
+        chunk = pts[st:st+40]
+        la = ','.join(str(q[0]) for q in chunk)
+        lo = ','.join(str(q[1]-360 if q[1] > 180 else q[1]) for q in chunk)
+        url = (f"https://api.open-meteo.com/v1/forecast?latitude={la}&longitude={lo}"
+               "&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms")
+        req = urllib.request.Request(url, headers={'User-Agent': 'cyclone-ri-warning/1.0'})
+        res = json.load(urllib.request.urlopen(req, timeout=120))
+        if isinstance(res, dict): res = [res]
+        for k, loc in enumerate(res):
+            cur = loc['current']; spd = cur['wind_speed_10m']; dr = math.radians(cur['wind_direction_10m'])
+            if reftime is None: reftime = cur['time']
+            U[st+k] = round(-spd*math.sin(dr), 2); V[st+k] = round(-spd*math.cos(dr), 2)
+        time.sleep(0.3)
+    assert all(x is not None for x in U)
+    wind = {'header': {'nx': 144, 'ny': 71, 'lo1': 0, 'la1': 87.5, 'dx': STEP, 'dy': STEP,
+                       'refTime': reftime, 'source': 'Open-Meteo current 10 m wind (GFS/ICON blend)'},
+            'u': U, 'v': V}
+    json.dump(wind, open('wind.json', 'w'), separators=(',', ':'))
+    print('wind.json written, refTime', reftime)
+except Exception as e:
+    print('wind update skipped:', e)
