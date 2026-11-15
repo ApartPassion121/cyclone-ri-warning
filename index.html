@@ -140,6 +140,10 @@
 
 <script>
 let W=null, STATS=null, DEFS=null, TRACK=null, LIVE=null, ENV=null, liveTrack=null;
+/* Colour ceiling for the RI layer. The old fixed 8% cut off 27 of 183 cells
+   (max 33.3%), so whole stretches of the RI corridor shared one saturated red. */
+let RI_SCALE=8;
+const THIN_PTS=20;   // below this a cell's percentages are noise, not climatology (~2 storms)
 const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 let layer='ri', shape='cells', month=new Date().getMonth()+1;
 let sel={lat:16.25, lng:127.5, cell:"15.0,127.5"};
@@ -295,8 +299,16 @@ function loadCoastlines(){
 }
 
 /* ---------- data -> geometry ---------- */
+/* Top of the RI scale = the highest rate among *well-sampled* cells, rounded up
+   to 5, so the 11-20% corridor spreads across the ramp. Thin cells are excluded:
+   one 33% rate from 12 points must not set the colour ceiling for the basin. */
+function riScale(){
+  const v=Object.values(STATS||{}).filter(s=>s.points>=THIN_PTS).map(s=>s.ri_pct).filter(x=>typeof x==='number');
+  if(!v.length) return 8;
+  return Math.max(8, Math.ceil(Math.max(...v)/5)*5);
+}
 function cellVal(s,key){
-  if(layer==='ri'){ if(!s) return null; return {v:s.ri_pct, t:s.ri_pct/8}; }
+  if(layer==='ri'){ if(!s) return null; return {v:s.ri_pct, t:s.ri_pct/RI_SCALE}; }
   const d=DEFS && DEFS[key+','+month];
   if(!d || d.SST===undefined) return null;
   return {v:d.SST, t:(d.SST-19)/12};
@@ -315,9 +327,10 @@ function cells(){
 function tipOf(lat,lng,s,v){
   const head=`${lat.toFixed(1)}°N ${lng.toFixed(1)}°E`;
   const n=`${s.storms} storm${s.storms===1?'':'s'}`;
+  const thin=s.points<THIN_PTS ? ` · only ${s.points} points, low sample` : ` · ${s.points} points`;
   return layer==='ri'
-    ? `${head} · RI ${s.ri_pct}% · weaken ${s.weaken_pct}% · ${n}`
-    : `${head} · SST ${v}°C · ${n}`;
+    ? `${head} · RI ${s.ri_pct}% · weaken ${s.weaken_pct}% · ${n}${thin}`
+    : `${head} · SST ${v}°C · ${n}${thin}`;
 }
 function cellMesh(d){
   // one cell = a 3x3 grid of points projected onto the sphere, triangulated here.
@@ -464,7 +477,8 @@ function redraw(){
   redrawSelection();
   world.polygonsData([]);
   world.heatmapsData(shape==='field' ? [cs.map(fieldOf)] : []);
-  const clData = shape==='cells' ? cs.map(c=>({lat:c.lat, lng:c.lng, color:washColor(c.t,0.2)})) : [];
+  // thin cells are dimmed: a 33% rate from 12 points must not outshine a 27% one from 239
+  const clData = shape==='cells' ? cs.map(c=>({lat:c.lat, lng:c.lng, color:washColor(c.t, (c.s.points<THIN_PTS)?0.58:0.2)})) : [];
   if(windOn && WINDJ) clData.push(WIND_DATUM);
   world.customLayerData(clData);
 }
@@ -497,7 +511,7 @@ function updateLiveLayers(){
   trackInfo();
 }
 function setScale(){
-  const[a,c]= layer==='sst' ? ['19C','31C'] : ['0%','8%+'];
+  const[a,c]= layer==='sst' ? ['19C','31C'] : ['0%', RI_SCALE+'%+'];
   sv1.textContent=a; sv3.textContent=c;
   document.getElementById('scalebar').style.opacity = layer==='off' ? .2 : 1;
   scaleCaption();
@@ -507,7 +521,11 @@ function setScale(){
 function scaleCaption(){
   const el=document.getElementById('scalecap'); if(!el) return;
   if(layer==='off'){ el.textContent='no layer'; return; }
-  if(layer==='ri'){ el.textContent='RI history · all season · not month-specific'; return; }
+  if(layer==='ri'){
+    const thin=STATS ? Object.values(STATS).filter(s=>s.points<THIN_PTS).length : 0;
+    el.textContent='RI history · all season · not month-specific'+(thin?` · ${thin} thin cells dimmed (<${THIN_PTS} points)`:'')+"";
+    return;
+  }
   const have=cells().length, all=STATS ? Object.keys(STATS).length : 0;
   el.textContent=`SST · ${have} of ${all} cells have ${MONTHS[month-1]} data`;
 }
@@ -572,7 +590,7 @@ function monthNote(d){
 function applyCell(){
   const s=STATS && STATS[sel.cell], d=defsFor(sel.cell, month);
   document.getElementById('locread').innerHTML = s
-    ? `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · ${s.storms} storm${s.storms===1?'':'s'} since 2000 · RI ${s.ri_pct}% · weak ${s.weaken_pct}%`
+    ? `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · ${s.storms} storm${s.storms===1?'':'s'} since 2000 · RI ${s.ri_pct}% · weak ${s.weaken_pct}%${s.points<THIN_PTS?` <span style="color:#c9a227">· ${s.points} points, low sample</span>`:` · ${s.points} points`}`
     : `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · no storms recorded in this cell`;
   const fb={WIND:65,PRES:990,DWIND_24:5,DWIND_12:5,DWIND_6:0,DPRES_6:-2,DPRES_24:-5,SST:29,DIST2LAND:300,SPEED:8};
   FIELDS.forEach(([k])=>{ document.getElementById('in-'+k).value = d && d[k]!==undefined ? d[k] : fb[k]; });
@@ -764,7 +782,7 @@ Promise.all([fetch('model_weights.json').then(r=>r.json()), fetch('region_stats.
   fetch('track_climatology.json').then(r=>r.json()).catch(()=>null),
   fetch('live_storms.json').then(r=>r.json()).catch(()=>null),
   fetch('era5_env.json').then(r=>r.json()).catch(()=>null)])
- .then(([w,s,d,t2,l2,e2])=>{ W=w; STATS=s; DEFS=d; TRACK=t2; LIVE=l2; ENV=e2;
+ .then(([w,s,d,t2,l2,e2])=>{ W=w; STATS=s; DEFS=d; TRACK=t2; LIVE=l2; ENV=e2; RI_SCALE=riScale();
    PTS_CACHE=null; PTS_KEY=''; DEFS_IDX=null;   // data arrived after any early empty build
    renderLive(); applyCell(); redraw(); windKick(); })
  .catch(e=>{ document.getElementById('locread').textContent='JSON files missing — they must sit next to index.html.'; });
