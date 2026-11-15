@@ -2,7 +2,7 @@
 
 ## Settings I will use
 
-- **Area:** West Pacific corridor — latitude 5–40, longitude 110–145
+- **Area:** North Pacific — latitude 5–40, longitude 110 °E eastward to 70 °W, split into two models at the dateline: west 110–180 °E, east 180 °E–70 °W. The steps below were written for the original 110–145 °E corridor they were carried out in; Step 23 records the widening and the readings that changed with it.
 - **Data years:** 2000–2025
 - **Training years:** 2000–2020
 - **Testing years:** 2021–2025
@@ -155,7 +155,7 @@ delta_24h = wind_24h_later - wind_now
 - [x] Compare different probability thresholds for issuing a `WEAKEN` warning.
 - [x] Choose settings that catch a high proportion of rapid changes without producing an unusable number of false alarms.
 - [x] Record the chosen thresholds and the reason for choosing them.
-- Chosen: warning threshold **0.25** for both RI and WEAKEN warnings (from the sweep: at 0.25 the model catches 92.9% of RI and 89.9% of WEAKEN; lower thresholds bought almost nothing and cost hundreds more false alarms). A warning means *prepare*, not *evacuate*; the globe still shows the raw probabilities.
+- Chosen: warning threshold **0.25** for both RI and WEAKEN warnings (from the sweep: at 0.25 the corridor model catches 92.9% of RI and 89.9% of WEAKEN — the two widened fits were swept separately and land on the same 0.25, west 85.4%/85.2% and east 90.8%/88.2%, see Step 23; lower thresholds bought almost nothing and cost hundreds more false alarms). A warning means *prepare*, not *evacuate*; the globe still shows the raw probabilities.
 
 ## Step 13 — Export the model for the globe
 
@@ -233,15 +233,15 @@ delta_24h = wind_24h_later - wind_now
 - [x] Compare four methods on the unseen years 2021–2025: persistence 411 km mean error; climatology (typical move per cell × month) 371 km; linear regression 377 km; blend of persistence + climatology 358 km.
 - [x] Ship the blend for live storms (uses their real motion) and climatology for clicked cells; print the honest mean error next to the forecast.
 - [x] Export `track_climatology.json` (1,594 cell-months) from the notebook (notebook Step 16) and stage it for the repo.
-- [ ] Wire the track arrow into the globe: line from the storm's position to the predicted position 24 hours later.
+- [x] Wire the track arrow into the globe: line from the storm's position to the predicted position 24 hours later (draws for the selected cell and for live storms; 2026-11-15 it also falls back across months and neighbouring cells when a cell-month is thin).
 
 ## Step 18 — Add live storms (added Sat Nov 14)
 
 - [x] Verify a live source: IBTrACS ACTIVE (NOAA NCEI) — the same dataset family as the training archive, with provisional rows for storms in progress.
 - [x] Build `live_storms.json`: each active West Pacific storm's latest position, its real 13 features from its own last 24 hours of reports, the model's probabilities, and its blend track. (Current entry: Cempaka/Samuel's last tracked point.)
 - [x] Write the refresher: `update_live.py` plus a GitHub Action (`live.yml`, every 6 hours) that rebuilds the file and commits it — no server needed.
-- [ ] Upload `live_storms.json`, `track_climatology.json`, `update_live.py` and `.github/workflows/live.yml` to the repo.
-- [ ] Show live storms on the globe with a LIVE marker; clicking one loads its real values into the panel.
+- [x] Upload `live_storms.json`, `track_climatology.json`, `update_live.py` and `.github/workflows/live.yml` to the repo.
+- [x] Show live storms on the globe with a LIVE marker; clicking one loads its real values into the panel.
 
 ## Step 19 — Test the complete product
 
@@ -289,8 +289,25 @@ delta_24h = wind_24h_later - wind_now
 - [ ] Submit the repository link, write-up, and demonstration video.
 - [ ] Save the submission confirmation.
 
+## Step 23 — Widen the domain past 145 °E (added Sun Nov 15)
+
+- [x] Measure what sits outside the corridor before training anything: 224 storms cross 145 °E and 88 exist only east of it. Observed 24 h RI rates: 2.65 % in the WP core (635 of 28,503 records), 3.22 % in the WP east of 145 °E (312/8,302), 2.99 % in the central Pacific (138/4,619), 6.25 % in the eastern Pacific (734/31,448). Risk is roughly twice as high on the far side of the dateline, so one threshold cannot serve both. (`tools/domain_census.py`)
+- [x] Split at the dateline instead of fitting one model across 190° of longitude: west 5–40 °N, 110–180 °E; east 5–40 °N, 180 °E–70 °W, which covers the central and eastern Pacific and the Gulf/Caribbean part of the Atlantic.
+- [x] Replace the linear longitude feature with a cyclic pair (`LON_SIN`, `LON_COS`) in both widened fits, so longitude is a position on a circle rather than a distance from 110 °E.
+- [x] Retrain outside the notebook (`tools/ri_domain_model.py`): west 23,917 labelled points (3.31 % RI, 364 cells), east 20,234 points (5.56 %, 437 cells). At t = 0.25 the west fit catches 85.4 % of RI and 85.2 % of weakening, the east fit 90.8 % and 88.2 %.
+- [x] Ship weights, cell statistics, cell × month defaults and track climatology for both as the `_wp` and `_east` twins. The page drops the original 110–145 °E file at load time because the west box contains it, so nothing is scored twice.
+- [x] Draw the union of every loaded region (801 cells, 749 drawn) instead of only the region the last click landed in, so panning across the Pacific shows the history without a click first.
+- [x] Hide cells whose every training report was over land (`DIST2LAND` = 0): 52 of 801 — the landfall tracks across Guangdong, Vietnam, Mexico and Central America.
+- [x] Stop one outlier from setting the colour ceiling: across both basins a single 71 % cell would have pushed the whole map into the blue end, so the ramp ends at the 98th percentile of well-sampled cells (35 %+, capped at 40).
+- [x] Fall back for the 24 h movement when a cell-month has fewer than five storms: this cell and month → this cell's nearest month → the ring of neighbouring cells, with the source named in the panel.
+- [x] Add a custom storm: latitude/longitude boxes place one at exact coordinates, its features stay editable, and its 24 h position keeps the typical direction while using the motion that was typed.
+- [x] Fill the conditions table for every drawn cell. `era5_env.json` went from 196 cells to all 801 (9,732 rows): ERA5 entries kept, the rest from NCEP/NCAR 1991–2020 on the same 2.5° grid, each row tagged with its source. CAPE is not in the NCEP monthly means and is not invented — those cells say "no ERA5 CAPE here". (`tools/env_climatology.py`)
+- [x] Re-run the stress test on the original corridor model after all of this: alarm rate 42.5 % against the 4.7 % base rate, +0.0 pp from the baseline.
+- [x] Record the readings in `README.md`: the two fits' metrics, the per-basin base rates, the coefficient table that explains why the same storm scores differently either side of the dateline, the environment-source note and the limitations that moved with them.
+
 ## Progress log
 
 - **Sat Nov 14, morning:** Model locked (logistic regression + SST + pressure trend, t = 0.25): RI 92.9%, WEAKEN 89.9% on 2021–2025. Globe live and verified. Extra validation on Typhoon Noru (never used in training): RI 9/11, WEAKEN 4/4; both misses were the post-landfall "second wind-up", the same failure pattern as Rai.
 - **Sat Nov 14, midday:** ERA5 upgrade tested and honestly rejected (Step 16 above). Live replay of Typhoon Samuel (Cempaka) from IBTrACS ACTIVE: at Nov 9, 06:00 UTC the model said RI 92.9% with Samuel's real numbers, but its actual next-24-hour change was +5 kt — a confident false alarm caused by momentum overshoot right after its own intensification finished. Kept for the report's limitations.
+- **Sun Nov 15:** Widened the model past 145 °E (Step 23). Two fits replace one: west 110–180 °E (3.31 % RI base, 85.4 % of RI caught at t = 0.25) and east 180 °E–70 °W (5.56 %, 90.8 %); the original 110–145 °E file is now only the stress baseline and is dropped by the page. The globe draws all 801 cells (749 once land-only cells are hidden), switches model by box at the dateline, falls back for 24 h movement where a cell-month is thin, and takes a hand-placed storm whose forecast uses its typed speed. The conditions table was filled for every cell (ERA5 where it existed, NCEP/NCAR 1991–2020 elsewhere; CAPE stays ERA5-only). Fixed on the way: the defaults export wrote `NaN`, which is not JSON, so both `region_defaults` files were rejected by the browser and the SST layer and pre-fill ran silently empty; data fetches now revalidate instead of trusting the HTTP cache.
 - **Sat Nov 14, afternoon:** Track forecast added (Step 17) and live mode built (Step 18). Kaggle notebook updated to Version 6: Step 15 = ERA5 verdict, Step 16 = track (self-healing: downloads IBTrACS itself in a fresh session; printed 411/371/358/377 km), Step 17 = live mode. Globe redesigned (dark Earth, drawn coastlines, shape options Cells/Field/Columns/Dots); verified: model math exact, SST layer works, Dots clean. Known issue: the Cells shape renders as jagged shards (globe.gl polygon rendering) and overloads the browser — use Dots as the default until fixed.
