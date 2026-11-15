@@ -1,0 +1,18 @@
+{
+  "alarm_rate_pct": 42.52,
+  "base_rate_pct": 4.72,
+  "class_mix": {
+    "RI": 261,
+    "STEADY": 725,
+    "WEAKEN": 131
+  },
+  "ri_percentiles": {
+    "max": 98.6,
+    "p50": 18.2,
+    "p95": 80.8
+  },
+  "rows": 1117,
+  "tolerance_pp": 3.0,
+  "warning_threshold": 0.25,
+  "weights_sha256": "105dfe72daae35465affc13d1af9f48cd34a383ac7d98d061d49c29b440d0396"
+}
