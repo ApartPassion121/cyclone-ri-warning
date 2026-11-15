@@ -642,6 +642,9 @@ function   loadLive(i){
   liveTrack={fromLat:st.lat, fromLng:st.lon, lat:st.track_24h.lat, lng:st.track_24h.lon};
   applyCell();
   FIELDS.forEach(([k])=>{ if(st.features[k]!==undefined) document.getElementById('in-'+k).value=st.features[k]; });
+  // keep the hand-entry boxes on the storm, as a globe click does, so PLACE can nudge from it
+  const cl=document.getElementById('c-lat'), cn=document.getElementById('c-lon');
+  if(cl){ cl.value=st.lat.toFixed(1); cn.value=st.lon.toFixed(1); }
   conds();   // applyCell painted the cell defaults; the storm's own values are now in the form
   redraw(); predict();
   world.pointOfView({lat:st.lat, lng:st.lon, altitude:1.5}, 900);
@@ -808,12 +811,14 @@ function trackInfo(){
   const e=liveTrack || trackEnd();
   if(!e){ box.style.display='none'; return; }
   box.style.display='block';
-  const drawn = e.t.src==='the pathway you drew';
-  box.innerHTML = liveTrack
-    ? `<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· storm motion + climatology · mean error ${TRACK_ERR.blend} km</span>`
-    : `<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· `+
-      (drawn ? `${e.t.src} (${e.t.n} fixes) · ${e.via} · a hand-drawn path has no measured error`
-             : `${e.t.src}${e.t.months?' (nearest month)':''}, ${e.t.n} past storms · ${e.via} · mean error ${TRACK_ERR.clim} km`)+`</span>`;
+  if(liveTrack){   // live storms have no climatology entry (no .t): never read one
+    box.innerHTML=`<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· storm motion + climatology · mean error ${TRACK_ERR.blend} km</span>`;
+    return;
+  }
+  const drawn = e.t && e.t.src==='the pathway you drew';
+  box.innerHTML = `<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· `+
+    (drawn ? `${e.t.src} (${e.t.n} fixes) · ${e.via} · a hand-drawn path has no measured error`
+           : `${e.t.src}${e.t.months?' (nearest month)':''}, ${e.t.n} past storms · ${e.via} · mean error ${TRACK_ERR.clim} km`)+`</span>`;
 }
 
 /* ---------- selection marker ---------- */
@@ -908,6 +913,7 @@ function scaleCaption(){
 function cellKey(lat,lng){ return (Math.floor(lat/2.5)*2.5).toFixed(1)+","+(Math.floor(lng/2.5)*2.5).toFixed(1); }
 let lastPick=0, lastPickCell='';
 function pick(lat,lng){
+  lng=wrapLng(lng);   // one convention everywhere: -180..180, as the cell keys are
   if(drawing){ addWaypoint(lat,lng); return; }   // drawing: a click is a fix, not a selection
   const cell=cellKey(lat,lng), now=performance.now();
   // onGlobeClick and the pointerup fallback both fire for one tap: run the
@@ -1037,7 +1043,12 @@ function fieldsGate(){
 // signed on purpose: the corridor is 5-40 N, so a southern-hemisphere click
 // must be refused too, not folded in by an absolute value.
 const fmtLat=v=>`${Math.abs(v).toFixed(1)}°${v>=0?'N':'S'}`;
-const fmtLng=v=>`${Math.abs(v).toFixed(1)}°${v>=0?'E':'W'}`;
+/* Longitudes arrive unwrapped wherever a position was computed by adding a
+   displacement to one (a 24 h point, a drawn path, a selected storm near the
+   dateline), and "215.7°E" is not a place. Normalise to -180..180 before
+   printing, so every readout names the hemisphere a user can actually find. */
+const wrapLng=v=>((v+180)%360+360)%360-180;
+const fmtLng=v=>{ const w=wrapLng(v); return `${Math.abs(w).toFixed(1)}°${w>=0?'E':'W'}`; };
 /* A model's own training box, in +-180 longitude so 180 E and 180 W are the
    same number and a box the model declares can cross the dateline. */
 function domainOf(w){
@@ -1174,6 +1185,7 @@ function stepHours(h){
 document.getElementById('tprev').onclick=()=>{ setPlaying(false); stepHours(-3); };
 document.getElementById('tnext').onclick=()=>{ setPlaying(false); stepHours(3); };
 document.getElementById('tnow').onclick=()=>{ if(!WINDJ) return;
+  setPlaying(false);   // a running animation would step off the frame we just chose
   let best=0, bd=1e18; WINDJ.frames.forEach((f,i)=>{ const d=Math.abs(frameMs(i)-Date.now()); if(d<bd){bd=d;best=i;} });
   setTime(best); };
 
@@ -1236,12 +1248,13 @@ function paintCursor(){
   const el=cursorEl||(cursorEl=document.getElementById('cursorread'));
   const g=(curAt && WINDJ && world.toGlobeCoords(curAt.x, curAt.y)) || null;
   if(!g){ if(curShown){ el.style.display='none'; curShown=false; } return; }
-  const uv=windSample(g.lat, g.lng, _CUV), kt=Math.round(Math.hypot(uv[0],uv[1])*KT);
+  const glat=g.lat, glng=wrapLng(g.lng);   // wrapped once, so the text and the samples agree
+  const uv=windSample(glat, glng, _CUV), kt=Math.round(Math.hypot(uv[0],uv[1])*KT);
   const from=(270-Math.atan2(uv[1],uv[0])*180/Math.PI+360)%360;
-  const p=sampleP(g.lat,g.lng), st=nearestStorm(g.lat,g.lng);
+  const p=sampleP(glat,glng), st=nearestStorm(glat,glng);
   // "from": the compass point the wind blows out of, not towards, so the arrow
   // direction can never be read the wrong way round.
-  let html=`${fmtLat(g.lat)} ${fmtLng(g.lng)}<br>wind <span class="w">${kt} kt from ${dirName(from)}</span>`;
+  let html=`${fmtLat(glat)} ${fmtLng(glng)}<br>wind <span class="w">${kt} kt from ${dirName(from)}</span>`;
   // The 5 deg grid cannot resolve an eye, so inside a storm radius its MSLP is
   // background pressure: prefer the storm's own reported centre pressure there.
   if(!st && Number.isFinite(p)) html+=` · <span class="p">${Math.round(p)} hPa</span>`;
