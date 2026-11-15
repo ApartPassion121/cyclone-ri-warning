@@ -479,7 +479,10 @@ function redraw(){
   world.heatmapsData(shape==='field' ? [cs.map(fieldOf)] : []);
   // thin cells are dimmed: a 33% rate from 12 points must not outshine a 27% one from 239
   const clData = shape==='cells' ? cs.map(c=>({lat:c.lat, lng:c.lng, color:washColor(c.t, (c.s.points<THIN_PTS)?0.58:0.2)})) : [];
-  if(windOn && WINDJ) clData.push(WIND_DATUM);
+  // The wind datum stays mounted even when the flow is hidden: removing it made
+  // three-globe strip the cached object (children emptied, geometry orphaned), so
+  // re-adding it drew an empty husk. Visibility is toggled in windKick() instead.
+  if(WINDJ) clData.push(WIND_DATUM);
   world.customLayerData(clData);
 }
 /* Selecting a cell only moves the marker, rings, label, crosshair and track -
@@ -726,6 +729,7 @@ function windObject(){
   lines.raycast=()=>{};
   lines.renderOrder=10;   // draw AFTER the Field heatmap surface, which otherwise paints over the flow
   windGroup=new THREE.Group(); windGroup.add(lines);
+  windGroup.visible = windOn;
   return windGroup;
 }
 function windStep(ts){
@@ -769,6 +773,7 @@ function windStep(ts){
 function windKick(){
   document.getElementById('windread').textContent =
     (windOn && WINDJ) ? `wind flow · Open-Meteo 10 m · ${frameLabel(tIdx)}` : '';
+  if(windGroup) windGroup.visible = windOn;   // hide/show, never unmount (see redraw)
   if(windOn && WINDJ && !windRAF){ windLast=0; windRAF=requestAnimationFrame(windStep); }
 }
 document.querySelectorAll('.wnd').forEach(b=> b.onclick=()=>{
@@ -794,7 +799,7 @@ fetch('wind_frames.json').then(r=>r.json()).then(w2=>{
   document.getElementById('timebar').style.display='flex';
   document.getElementById('tlabel').textContent=frameLabel(tIdx);
   // add the flow to the existing custom layer instead of rebuilding 183 cells
-  if(windOn){
+  {
     if(shape==='cells') world.customLayerData(world.customLayerData().concat([WIND_DATUM]));
     else redraw();   // other shapes must rebuild their own geometry anyway
   }
