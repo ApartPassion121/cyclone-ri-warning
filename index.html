@@ -49,6 +49,8 @@
   #predict { width:100%; margin-top:8px; background:#b03a2e; color:#fff; border:none; padding:6px; font:inherit; font-size:11px; font-weight:600; letter-spacing:.12em; cursor:pointer; }
   #predict:hover { background:#c14436; }
   #result { margin-top:8px; display:none; }
+  #baserate { margin-top:5px; color:#697d87; line-height:1.45; font-size:10px; }
+  #baserate b { color:#8fa3ad; font-weight:500; }
   .bar-row { display:flex; align-items:center; gap:6px; margin:3px 0; }
   .bar-row .nm { width:34px; color:#8fa3ad; }
   .bar-row .pc { width:42px; text-align:right; color:#e8eef1; }
@@ -58,6 +60,8 @@
   .v-ri { background:rgba(176,58,46,.15); border-color:#d7191c; }
   .v-we { background:rgba(63,131,196,.13); border-color:#3f83c4; }
   .v-st { background:rgba(127,176,105,.11); border-color:#7fb069; }
+  .v-na { background:rgba(201,162,39,.12); border-color:#c9a227; }
+  #predict:disabled { opacity:.45; cursor:not-allowed; }
   #conds { margin-top:8px; border-top:1px solid #26333b; padding-top:6px; color:#8fa3ad; line-height:1.6; display:none; }
   #conds .hd { color:#8fa3ad; letter-spacing:.09em; font-size:10px; margin-bottom:3px; }
   #conds .ok { color:#7fb069; } #conds .bad { color:#e08a4c; } #conds .na { color:#4d5f69; }
@@ -130,6 +134,7 @@
       <div class="bar-row"><span class="nm">RI</span><div class="bar-bg"><div class="bar-fill" id="b-ri" style="background:#d7191c"></div></div><span class="pc" id="p-ri"></span></div>
       <div class="bar-row"><span class="nm">WEAK</span><div class="bar-bg"><div class="bar-fill" id="b-we" style="background:#3f83c4"></div></div><span class="pc" id="p-we"></span></div>
       <div class="bar-row"><span class="nm">STEADY</span><div class="bar-bg"><div class="bar-fill" id="b-st" style="background:#7fb069"></div></div><span class="pc" id="p-st"></span></div>
+      <div id="baserate"></div>
     </div>
     <div id="verdict"></div>
     <div id="conds"></div>
@@ -140,6 +145,7 @@
 
 <script>
 let W=null, STATS=null, DEFS=null, TRACK=null, LIVE=null, ENV=null, liveTrack=null;
+const CORRIDOR={lat:[5,40], lon:[110,145]};   // the training box (README: 5-40 N, 110-145 E)
 /* Colour ceiling for the RI layer. The old fixed 8% cut off 27 of 183 cells
    (max 33.3%), so whole stretches of the RI corridor shared one saturated red. */
 let RI_SCALE=8;
@@ -156,6 +162,8 @@ const FIELDS=[
 const form=document.getElementById('form');
 FIELDS.forEach(([k,l])=>{ const d=document.createElement('div'); d.className='fld';
   d.innerHTML=`<label>${l}</label><input id="in-${k}" type="number" step="any">`; form.appendChild(d); });
+// clearing a box must drop the stale bars at once, not wait for RUN
+document.querySelectorAll('#form input').forEach(el=> el.addEventListener('input', ()=>{ conds(); fieldsGate(); }));
 const msel=document.getElementById('month');
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 MONTHS.forEach((n,i)=>{
@@ -397,7 +405,8 @@ function renderLive(){
     const ep=effPos(st);
     const when = ep.replay ? `<div class="lm">replaying ${frameLabel(tIdx)}: ${ep.wind} kt · ${ep.pres} hPa</div>` : '';
     return `<div><span class="lh">● ${badge}</span> <span class="lstorm" data-i="${i}">${st.name}</span> <span class="lm">${st.wind_kt} kt · ${st.pres_hpa} hPa · ${st.time_utc} UTC</span></div>
-    <div class="lm">model: RI ${st.prediction.RI}% · STEADY ${st.prediction.STEADY}% · WEAK ${st.prediction.WEAKEN}%</div>` + when;
+    <div class="lm">model: RI ${st.prediction.RI}% · STEADY ${st.prediction.STEADY}% · WEAK ${st.prediction.WEAKEN}%`+
+      (inBox(st.lat, st.lon) ? '' : ` <span style="color:#c9a227">· outside the training box, extrapolated</span>`) + `</div>` + when;
   }).join('');
   box.querySelectorAll('.lstorm').forEach(el=> el.onclick=()=>loadLive(+el.dataset.i));
 }
@@ -547,6 +556,7 @@ function pick(lat,lng){
   if(res) res.style.display='none';   // stale result from the previous cell must not linger
   const vd=document.getElementById('verdict');
   if(vd){ vd.style.display='none'; vd.textContent=''; }
+  corridorGate();   // refuse (and disable RUN) outside the training corridor
   redrawSelection();
   const p=world.pointOfView();
   world.pointOfView({lat, lng, altitude:Math.min(p.altitude,1.5)}, 900);
@@ -598,6 +608,7 @@ function applyCell(){
   const fb={WIND:65,PRES:990,DWIND_24:5,DWIND_12:5,DWIND_6:0,DPRES_6:-2,DPRES_24:-5,SST:29,DIST2LAND:300,SPEED:8};
   FIELDS.forEach(([k])=>{ document.getElementById('in-'+k).value = d && d[k]!==undefined ? d[k] : fb[k]; });
   conds();
+  fieldsGate();   // defaults restored: drop any stale "missing values" message
   monthNote(d);
 }
 /* The six classic formation conditions. The first three are model inputs; the
@@ -608,22 +619,81 @@ function conds(){
   const box=document.getElementById('conds'); if(!box) return;
   const v=vals(), e=ENV && ENV[sel.cell+','+month], lat=Math.abs(sel.lat);
   const row=(ok,label,val)=>`<div><span class="${ok===null?'na':(ok?'ok':'bad')}">${ok===null?'·':(ok?'+':'−')}</span> ${label} <span class="na">${val}</span></div>`;
+  const hasS=Number.isFinite(v.SST), hasW=Number.isFinite(v.WIND);
   box.innerHTML='<div class="hd">CONDITIONS</div>'+
-    row(v.SST>=COND_TH.sst,'Warm ocean',`${v.SST}°C · ≥${COND_TH.sst}`)+
+    row(hasS?v.SST>=COND_TH.sst:null,'Warm ocean',hasS?`${v.SST}°C · ≥${COND_TH.sst}`:'no value')+
     row(lat>=COND_TH.cor,'Coriolis',`${lat.toFixed(1)}° · ≥${COND_TH.cor}`)+
-    row(v.WIND>=COND_TH.wind,'Storm exists',`${v.WIND} kt · ≥${COND_TH.wind}`)+
+    row(hasW?v.WIND>=COND_TH.wind:null,'Storm exists',hasW?`${v.WIND} kt · ≥${COND_TH.wind}`:'no value')+
     row(e?e.SHEAR<COND_TH.shear:null,'Wind shear',e?`${e.SHEAR} m/s · <${COND_TH.shear}`:'no data')+
     row(e?e.RH>=COND_TH.rh:null,'Humidity 700',e?`${e.RH}% · ≥${COND_TH.rh}`:'no data')+
     row(e?e.CAPE>=COND_TH.cape:null,'Instability',e?`${e.CAPE} J/kg · ≥${COND_TH.cape}`:'no data')+
     '<div class="note">first three are model inputs · ERA5 rows are typical for this cell &amp; month: context, not scored</div>';
   box.style.display='block';
 }
+/* A cleared box is a missing measurement, not a zero: coercing it made an empty
+   form look like a 0 kt storm in 0 C water and scored it as confidently STEADY. */
 function vals(){
-  const v={}; FIELDS.forEach(([k])=> v[k]=parseFloat(document.getElementById('in-'+k).value)||0);
+  const v={};
+  FIELDS.forEach(([k])=>{ const raw=document.getElementById('in-'+k).value.trim(); v[k]=raw===''?NaN:parseFloat(raw); });
   v.LAT=sel.lat; v.LON=sel.lng; v.MONTH=month; return v;
+}
+function missingFields(){
+  const v=vals();
+  return FIELDS.filter(([k])=>!Number.isFinite(v[k])).map(([,l])=>l);
+}
+function fieldsGate(){
+  const miss=missingFields(), vd=document.getElementById('verdict');
+  if(!miss.length){ if(vd && vd.dataset.miss){ vd.style.display='none'; vd.textContent=''; vd.className=''; delete vd.dataset.miss; } return true; }
+  const res=document.getElementById('result'); if(res) res.style.display='none';
+  ['p-ri','p-we','p-st'].forEach(id=>{ document.getElementById(id).textContent=''; });
+  vd.style.display='block'; vd.className='v-na'; vd.dataset.miss='1';
+  vd.innerHTML=`<b>MISSING VALUES</b> — ${miss.slice(0,4).join(', ')}${miss.length>4?` and ${miss.length-4} more`:''} ${miss.length===1?'is':'are'} empty. All ${FIELDS.length} inputs are needed; click the globe to restore the defaults.`;
+  return false;
+}
+/* The fit was trained on 5-40 N only. A linear latitude term keeps raising RI
+   towards the equator, where storms cannot spin up and the model has no data
+   at all (3 N used to score 97 %), so refuse rather than extrapolate. */
+// signed on purpose: the corridor is 5-40 N, so a southern-hemisphere click
+// must be refused too, not folded in by an absolute value.
+function inBox(lat,lng){
+  return lat>=CORRIDOR.lat[0] && lat<=CORRIDOR.lat[1] &&
+         lng>=CORRIDOR.lon[0] && lng<=CORRIDOR.lon[1];
+}
+function outsideWhy(){   // which edge(s) of the box this point left
+  const why=[], la=CORRIDOR.lat, lo=CORRIDOR.lon;
+  if(sel.lat<la[0]) why.push(`south of ${la[0]}°N`);
+  if(sel.lat>la[1]) why.push(`north of ${la[1]}°N`);
+  if(sel.lng<lo[0]) why.push(`west of ${lo[0]}°E`);
+  if(sel.lng>lo[1]) why.push(`east of ${lo[1]}°E`);
+  return why;
+}
+const fmtLat=v=>`${Math.abs(v).toFixed(1)}°${v>=0?'N':'S'}`;
+const fmtLng=v=>`${Math.abs(v).toFixed(1)}°${v>=0?'E':'W'}`;
+function corridorGate(){
+  const ok=inBox(sel.lat, sel.lng), btn=document.getElementById('predict'), vd=document.getElementById('verdict');
+  if(btn) btn.disabled=!ok;
+  if(ok){ if(vd && vd.dataset.na){ vd.style.display='none'; vd.textContent=''; vd.className=''; delete vd.dataset.na; } return true; }
+  const res=document.getElementById('result'); if(res) res.style.display='none';
+  vd.style.display='block'; vd.className='v-na'; vd.dataset.na='1';
+  const why=outsideWhy();
+  vd.innerHTML=`<b>NO PREDICTION</b> — ${fmtLat(sel.lat)} ${fmtLng(sel.lng)} is outside the 5–40 °N, 110–145 °E training box${why.length?` (too far ${why.join(' and ')})`:''}. The model never saw a storm there.`;
+  return false;
+}
+/* The archive's own RI rate, so a 62 % score is read against the 4.7 % that
+   actually happens: the bars rank risk, they are not calibrated chances. */
+let BASE_RATE;
+function basinBaseRate(){
+  if(BASE_RATE===undefined){
+    let num=0, den=0;
+    for(const k of Object.keys(STATS||{})){ const s=STATS[k]; num+=s.ri_pct*(s.points||0); den+=s.points||0; }
+    BASE_RATE = den ? num/den : null;
+  }
+  return BASE_RATE;
 }
 function predict(){
   if(!W) return;
+  if(!corridorGate()) return;
+  if(!fieldsGate()) return;
   const v=vals();
   const x=W.features.map((f,i)=>(v[f]-W.scaler_mean[i])/W.scaler_scale[i]);
   const z=W.classes.map((c,ci)=> W.intercept[ci] + x.reduce((s,xi,j)=> s+xi*W.coef[ci][j],0));
@@ -633,6 +703,9 @@ function predict(){
   document.getElementById('result').style.display='block';
   [['RI','b-ri','p-ri'],['WEAKEN','b-we','p-we'],['STEADY','b-st','p-st']].forEach(([k,b,p])=>{
     document.getElementById(b).style.width=(P[k]*100)+'%'; document.getElementById(p).textContent=pct(k)+'%'; });
+  const br=basinBaseRate(), brEl=document.getElementById('baserate');
+  if(brEl) brEl.innerHTML = br===null ? '' :
+    `Observed basin base rate <b>${(br*100).toFixed(1)}%</b> — the share of storm points in this basin that rapid-intensified in 24 h. These bars rank the risk; they are not calibrated probabilities.`;
   const vd=document.getElementById('verdict'); vd.style.display='block';
   const T=W.warning_threshold;
   if(P.RI>=T){ vd.className='v-ri'; vd.innerHTML=`<b>RI WATCH</b> — prepare. Not an evacuation order.`; }
@@ -799,10 +872,8 @@ fetch('wind_frames.json').then(r=>r.json()).then(w2=>{
   document.getElementById('timebar').style.display='flex';
   document.getElementById('tlabel').textContent=frameLabel(tIdx);
   // add the flow to the existing custom layer instead of rebuilding 183 cells
-  {
-    if(shape==='cells') world.customLayerData(world.customLayerData().concat([WIND_DATUM]));
-    else redraw();   // other shapes must rebuild their own geometry anyway
-  }
+  if(shape==='cells') world.customLayerData(world.customLayerData().concat([WIND_DATUM]));
+  else redraw();   // other shapes must rebuild their own geometry anyway
   windKick();
 }).catch(()=>{});
 </script>
