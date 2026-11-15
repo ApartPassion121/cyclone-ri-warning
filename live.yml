@@ -14,6 +14,6 @@ jobs:
       - run: python update_live.py
       - run: |
           git config user.name "live-bot"; git config user.email "actions@github.com"
-          git add live_storms.json wind.json
+          git add live_storms.json wind_frames.json
           git commit -m "live storms update" || echo "no change"
           git push
