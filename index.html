@@ -347,7 +347,10 @@ function riScale(){
 }
 function cellVal(s,key){
   if(layer==='ri'){ if(!s) return null; return {v:s.ri_pct, t:s.ri_pct/RI_SCALE}; }
-  const d=DEFS && DEFS[key+','+month];
+  // the SST layer draws the same union of cells, so look past the active
+  // region's defaults when the cell came from another one
+  let d=DEFS && DEFS[key+','+month];
+  if(!d) for(const r of REGIONS){ const x=r.DEFS && r.DEFS[key+','+month]; if(x){ d=x; break; } }
   if(!d || d.SST===undefined) return null;
   return {v:d.SST, t:(d.SST-19)/12};
 }

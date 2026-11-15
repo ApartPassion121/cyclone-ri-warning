@@ -206,9 +206,17 @@ def main():
         }
     defaults = {}
     keep_defaults = [f for f in features if f not in ("LON_SIN", "LON_COS")]
+    # A cell-month where every report lacks a field has a NaN median, and NaN is
+    # not JSON: the browser rejects the whole file. Fall back to the basin median.
+    basin_med = labelled[keep_defaults].median()
     for (clat, clon, m), d in labelled.groupby(["CELL_LAT", "CELL_LON", "MONTH"]):
-        defaults[f"{clat},{clon},{int(m)}"] = {
-            f: round(float(d[f].median()), 2) for f in keep_defaults}
+        row = {}
+        for f in keep_defaults:
+            v = d[f].median()
+            if pd.isna(v):
+                v = basin_med[f]
+            row[f] = round(float(v), 2) if pd.notna(v) else sst_fill
+        defaults[f"{clat},{clon},{int(m)}"] = row
 
     # 24 h movement climatology on the site's grid (cell centre = origin + 1.25),
     # training years only, so the page's track forecast reaches the new cells
@@ -247,7 +255,7 @@ def main():
                       (f"region_defaults_{args.domain}.json", defaults),
                       (f"track_climatology_{args.domain}.json", track)]:
         with open(os.path.join(args.out, name), "w") as fh:
-            json.dump(obj, fh, indent=1)
+            json.dump(obj, fh, indent=1, allow_nan=False)
     print(f"\ncells {len(stats)}  cell-month defaults {len(defaults)}  "
           f"track cell-months {len(track)}  -> {args.out}")
 
