@@ -118,9 +118,9 @@
   <div id="scalecap"></div>
   <div id="scalebar"></div>
   <div id="scalevals"><span id="sv1">0%</span><span id="sv2"></span><span id="sv3">8%+</span></div>
-  <div class="hint">click the globe to select a cell · hover for history · orange = live storm</div>
+  <div class="hint">click a cell · hover for history · orange = live storm</div>
   <div id="windread" style="color:#4d5f69"></div>
-  <div style="color:#4d5f69">NOAA IBTrACS · NOAA OISST · ERA5 (Copernicus C3S) · wind Open-Meteo · not an official forecast</div>
+  <div style="color:#4d5f69">NOAA IBTrACS · OISST · ERA5 · Open-Meteo · not an official forecast</div>
 </div>
 
 <div class="box" id="timebar">
@@ -423,6 +423,7 @@ function loadLive(i){
   liveTrack={fromLat:st.lat, fromLng:st.lon, lat:st.track_24h.lat, lng:st.track_24h.lon};
   applyCell();
   FIELDS.forEach(([k])=>{ if(st.features[k]!==undefined) document.getElementById('in-'+k).value=st.features[k]; });
+  conds();   // applyCell painted the cell defaults; the storm's own values are now in the form
   redraw(); predict();
   world.pointOfView({lat:st.lat, lng:st.lon, altitude:1.5}, 900);
 }
@@ -541,11 +542,11 @@ function scaleCaption(){
   if(layer==='off'){ el.textContent='no layer'; return; }
   if(layer==='ri'){
     const thin=STATS ? Object.values(STATS).filter(s=>s.points<THIN_PTS).length : 0;
-    el.textContent='RI history · all season · not month-specific'+(thin?` · ${thin} thin cells dimmed (<${THIN_PTS} points)`:'')+"";
+    el.textContent='all-season'+(thin?` · ${thin} thin cells dimmed (<${THIN_PTS} points)`:'');
     return;
   }
   const have=cells().length, all=STATS ? Object.keys(STATS).length : 0;
-  el.textContent=`SST · ${have} of ${all} cells have ${MONTHS[month-1]} data`;
+  el.textContent=`SST · ${MONTHS[month-1]} · ${have}/${all} cells`;
 }
 
 function cellKey(lat,lng){ return (Math.floor(lat/2.5)*2.5).toFixed(1)+","+(Math.floor(lng/2.5)*2.5).toFixed(1); }
@@ -749,15 +750,29 @@ function setPlaying(on){
   const btn=document.getElementById('tplay');
   if(on && !playTimer){
     btn.textContent='❚❚';
-    playTimer=setInterval(()=>{ if(WINDJ) setTime(tIdx>=WINDJ.frames.length-1 ? 0 : tIdx+1); }, 900);
+    // a tick already queued when playback stops must not run: clicking a step
+    // button right after play used to land one extra frame (a double step)
+    playTimer=setInterval(()=>{ if(!playTimer || !WINDJ) return; setTime(tIdx>=WINDJ.frames.length-1 ? 0 : tIdx+1); }, 900);
   } else if(!on && playTimer){
     btn.textContent='▶'; clearInterval(playTimer); playTimer=null;
   }
 }
 document.getElementById('tplay').onclick=()=> setPlaying(!playTimer);
-function stepHours(h){ if(!WINDJ) return; const target=frameMs(tIdx)+h*3600e3;
-  let best=tIdx, bd=1e18; WINDJ.frames.forEach((f,i)=>{ const dd=Math.abs(frameMs(i)-target); if(dd<bd){bd=dd;best=i;} });
-  setTime(best); }
+/* Frames are 6-hourly back to the earliest storm history and 3-hourly near now,
+   so +3 h from a 6-hourly frame lands exactly between two frames. Break that tie
+   towards the direction of travel, and never stay on the same frame when a frame
+   exists that way, so every click moves exactly one step. */
+function stepHours(h){
+  if(!WINDJ) return;
+  const target=frameMs(tIdx)+h*3600e3, dir=Math.sign(h)||1, n=WINDJ.frames.length;
+  let best=tIdx, bd=Infinity;
+  WINDJ.frames.forEach((f,i)=>{
+    const dd=Math.abs(frameMs(i)-target);
+    if(dd<bd || (dd===bd && (i-best)*dir>0)){ bd=dd; best=i; }
+  });
+  if(best===tIdx && tIdx+dir>=0 && tIdx+dir<n) best=tIdx+dir;
+  setTime(best);
+}
 document.getElementById('tprev').onclick=()=>{ setPlaying(false); stepHours(-3); };
 document.getElementById('tnext').onclick=()=>{ setPlaying(false); stepHours(3); };
 document.getElementById('tnow').onclick=()=>{ if(!WINDJ) return;
@@ -771,7 +786,8 @@ document.getElementById('tnow').onclick=()=>{ if(!WINDJ) return;
    Pressure is MSLP from the frame when the feed carries it (coarse grid - see
    update_live.py) and a storm's own report when the pointer is over one. */
 const KT=1.94384;   // m/s -> kt, the unit the rest of the page uses
-let curAt=null, cursorEl=null;
+let curAt=null, cursorEl=null, curShown=false, curHTML='', curTF='', curW=0, curH=0;
+let curQueued=false, curCanvas=null;
 const _CUV=[0,0];
 function dirName(deg){ return ['N','NE','E','SE','S','SW','W','NW'][Math.round(((deg%360)+360)%360/45)%8]; }
 function kmBetween(a,b,c,d){
@@ -801,27 +817,65 @@ function nearestStorm(lat,lng){   // the only live pressure that is not a coarse
   }
   return best && best.d<=250 ? best : null;   // 250 km: about two 2.5 deg cells
 }
+function tipRect(){   // globe.gl keeps several .scene-tooltip nodes, and may add one late: query fresh
+  let best=null, area=0;
+  for(const t of document.querySelectorAll('.scene-tooltip')){
+    if(!t.textContent.trim()) continue;
+    const r=t.getBoundingClientRect(), a=r.width*r.height;
+    if(a>area){ area=a; best=r; }
+  }
+  return best;
+}
+/* A pointermove can fire several times per frame and every paint reads layout, so
+   the event only records the pointer: one paint runs per frame, and it writes
+   nothing when the numbers, the box size and the position are unchanged. */
 function cursorRead(){
+  if(curQueued) return;
+  curQueued=true;
+  requestAnimationFrame(()=>{ curQueued=false; paintCursor(); });
+}
+function paintCursor(){
   const el=cursorEl||(cursorEl=document.getElementById('cursorread'));
   const g=(curAt && WINDJ && world.toGlobeCoords(curAt.x, curAt.y)) || null;
-  if(!g){ el.style.display='none'; return; }
+  if(!g){ if(curShown){ el.style.display='none'; curShown=false; } return; }
   const uv=windSample(g.lat, g.lng, _CUV), kt=Math.round(Math.hypot(uv[0],uv[1])*KT);
   const from=(270-Math.atan2(uv[1],uv[0])*180/Math.PI+360)%360;
   const p=sampleP(g.lat,g.lng), st=nearestStorm(g.lat,g.lng);
-  let html=`${fmtLat(g.lat)} ${fmtLng(g.lng)}<br>wind <span class="w">${kt} kt ${dirName(from)}</span>`;
-  if(Number.isFinite(p)) html+=` · <span class="p">${Math.round(p)} hPa</span>`;
-  if(st) html+=`<br><span class="st">◉ ${st.st.name}</span> ${Math.round(st.d)} km · ${st.ep.wind!=null?st.ep.wind:st.st.wind_kt} kt · ${st.pr} hPa`;
-  el.innerHTML=html; el.style.display='block';
-  const w=el.offsetWidth, h=el.offsetHeight;   // flip away from the window edge
-  const x=curAt.x+16+w>innerWidth ? curAt.x-w-14 : curAt.x+16;
-  const y=curAt.y+16+h>innerHeight ? curAt.y-h-14 : curAt.y+16;
-  el.style.transform=`translate(${Math.round(x)}px,${Math.round(y)}px)`;
+  // "from": the compass point the wind blows out of, not towards, so the arrow
+  // direction can never be read the wrong way round.
+  let html=`${fmtLat(g.lat)} ${fmtLng(g.lng)}<br>wind <span class="w">${kt} kt from ${dirName(from)}</span>`;
+  // The 5 deg grid cannot resolve an eye, so inside a storm radius its MSLP is
+  // background pressure: prefer the storm's own reported centre pressure there.
+  if(!st && Number.isFinite(p)) html+=` · <span class="p">${Math.round(p)} hPa</span>`;
+  if(st) html+=`<br><span class="st">◉ ${st.st.name}</span> ${Math.round(st.d)} km · ${st.ep.wind!=null?st.ep.wind:st.st.wind_kt} kt · ${st.pr} hPa centre`;
+  if(!curShown){ el.style.display='block'; curShown=true; curHTML=''; }   // show first: a hidden node measures 0
+  if(html!==curHTML){ el.innerHTML=html; curHTML=html; curW=el.offsetWidth; curH=el.offsetHeight; }
+  // globe.gl puts its own label (cell, storm, 24 h path) at the pointer too, so
+  // sit clear of it instead of stacking two boxes on the same spot.
+  const tr=tipRect();
+  let x, y;
+  if(tr){
+    x=tr.left; y=tr.bottom+6;
+    if(y+curH>innerHeight-4) y=tr.top-curH-6;
+  } else {
+    x=curAt.x+16+curW>innerWidth ? curAt.x-curW-14 : curAt.x+16;
+    y=curAt.y+16+curH>innerHeight ? curAt.y-curH-14 : curAt.y+16;
+  }
+  x=Math.max(4, Math.min(x, innerWidth-curW-4));
+  y=Math.max(4, Math.min(y, innerHeight-curH-4));
+  const tf=`translate(${Math.round(x)}px,${Math.round(y)}px)`;
+  if(tf!==curTF){ el.style.transform=tf; curTF=tf; }
 }
 addEventListener('pointermove', e=>{
-  const c=document.querySelector('#globe canvas');
-  curAt=(c && e.target===c) ? {x:e.clientX, y:e.clientY} : null;
-  cursorRead();
+  if(!curCanvas || !curCanvas.isConnected) curCanvas=document.querySelector('#globe canvas');
+  const on=(curCanvas && e.target===curCanvas) ? {x:e.clientX, y:e.clientY} : null;
+  if(on && curAt && on.x===curAt.x && on.y===curAt.y) return;   // same spot: nothing to redraw
+  curAt=on; cursorRead();
 });
+/* globe.gl creates and moves its label on its own hover tick, not on our event,
+   so re-check slowly while the pointer rests: it reads one rect and writes
+   nothing unless the label appeared or moved. */
+setInterval(()=>{ if(curAt) cursorRead(); }, 150);
 addEventListener('pointerout', e=>{ if(!e.relatedTarget){ curAt=null; cursorRead(); } });
 
 /* ---------- wind flow (whole globe, Open-Meteo 10 m wind via wind_frames.json) ---------- */
@@ -912,7 +966,7 @@ function windStep(ts){
 }
 function windKick(){
   document.getElementById('windread').textContent =
-    (windOn && WINDJ) ? `wind flow · Open-Meteo 10 m · ${frameLabel(tIdx)}` : '';
+    (windOn && WINDJ) ? 'Open-Meteo 10 m' : '';
   if(windGroup) windGroup.visible = windOn;   // hide/show, never unmount (see redraw)
   if(windOn && WINDJ && !windRAF){ windLast=0; windRAF=requestAnimationFrame(windStep); }
 }
@@ -932,6 +986,12 @@ Promise.all([fetch('model_weights.json').then(r=>r.json()), fetch('region_stats.
    renderLive(); applyCell(); redraw(); windKick(); })
  .catch(e=>{ document.getElementById('locread').textContent='JSON files missing — they must sit next to index.html.'; });
 fetch('wind_frames.json').then(r=>r.json()).then(w2=>{
+  // The generator can emit the same timestamp twice at the 6 h/3 h join; a
+  // duplicate is a dead step on the time bar, so keep the first of each time.
+  if(w2 && w2.frames && w2.frames.length){
+    const uniq=w2.frames.filter((f,i,a)=>i===0 || f.time!==a[i-1].time);
+    if(uniq.length!==w2.frames.length) w2.frames=uniq;
+  }
   WINDJ=w2;
   if(!WINDJ || !WINDJ.frames || !WINDJ.frames.length) return;
   let best=0, bd=1e18; WINDJ.frames.forEach((f,i)=>{ const dd=Math.abs(frameMs(i)-Date.now()); if(dd<bd){bd=dd;best=i;} });
