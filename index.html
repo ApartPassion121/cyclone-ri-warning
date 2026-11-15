@@ -257,7 +257,11 @@ function crossPaths(){
     P(alongLng(sel.lng,sel.lat-2.6,sel.lat+2.6,0.8),CROSS_COL,1.2,0.004)
   ];
 }
-function staticPaths(){ return graticulePaths().concat(framePaths()).concat(COAST); }
+let STATIC_PATHS=null;
+// The graticule/frame/coastline paths never change: build them once and keep the
+// same object references so a click only re-creates the 2 crosshair paths
+// (three-globe diffs by identity).
+function staticPaths(){ return STATIC_PATHS || (STATIC_PATHS=graticulePaths().concat(framePaths()).concat(COAST)); }
 
 function loadCoastlines(){
   if(typeof topojson==='undefined') return;
@@ -268,6 +272,7 @@ function loadCoastlines(){
         if(line.length<2) return;
         COAST.push(P(line.map(([lng,lat])=>[lat,lng]),COAST_COL,1.6,0.0035));
       });
+      STATIC_PATHS=null;   // coastlines arrived after the first cache
       redraw();
     })
     .catch(()=>{});
@@ -314,13 +319,6 @@ function cellMesh(d){
   const mesh=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:d.color, transparent:true, opacity:0.92, side:THREE.DoubleSide}));
   mesh.raycast=()=>{};  // clicks must pass through the tile to the globe, or onGlobeClick never fires
   return mesh;
-}
-function polyOf(c){
-  const pad=1.32;  // slight overlap so neighbouring cells leave no seam
-  return {type:'Feature', properties:{color:washColor(c.t,0.2), tip:c.tip},
-    geometry:{type:'Polygon', coordinates:[[
-      [c.b-pad,c.a-pad],[c.b+pad,c.a-pad],[c.b+pad,c.a+pad],[c.b-pad,c.a+pad],[c.b-pad,c.a-pad]
-    ]]}};
 }
 function dotOf(c){
   const color=scaleColor(c.t);
@@ -432,21 +430,21 @@ function selLabel(){
 /* ---------- render ---------- */
 function redraw(){
   const cs=cells();
-  const pts=(shape==='columns'||shape==='dots') ? cs.map(dotOf) : [];
-  const tp=trackPoint();
   // Selection + live layers are set BEFORE the custom layer: rebuilding the
   // ~200 cell meshes in the same tick was swallowing the updates queued after
   // it, which left the pointer label/ring/crosshair stuck on the old cell.
-  world.pointsData(pts.concat(tp ? [markerPoint(), tp] : [markerPoint()], livePoints()));
-  world.ringsData([{lat:sel.lat,lng:sel.lng,color:['rgba(255,198,138,0.8)','rgba(255,198,138,0)']}]
-    .concat((LIVE&&LIVE.storms?LIVE.storms:[]).map(st=>{ const ep=effPos(st); return {lat:ep.lat,lng:ep.lon,color:['rgba(255,120,71,0.85)','rgba(255,120,71,0)']}; })));
-  world.labelsData([{lat:sel.lat,lng:sel.lng,label:selLabel()}].concat(liveLabels()));
-  world.pathsData(staticPaths().concat(crossPaths(), trackPaths()));
+  redrawSelection();
   world.polygonsData([]);
   world.heatmapsData(shape==='field' ? [cs.map(fieldOf)] : []);
   const clData = shape==='cells' ? cs.map(c=>({lat:c.lat, lng:c.lng, color:washColor(c.t,0.2)})) : [];
   if(windOn && WINDJ) clData.push(WIND_DATUM);
   world.customLayerData(clData);
+}
+/* Selecting a cell only moves the marker, rings, label, crosshair and track -
+   the cell meshes and the heatmap are left alone so a tap stays instant. */
+function redrawSelection(){
+  updateLiveLayers();
+  world.pathsData(staticPaths().concat(crossPaths(), trackPaths()));
   setScale();
 }
 /* Time steps only move the live-storm layers. They deliberately do NOT touch the
@@ -468,19 +466,28 @@ function setScale(){
 }
 
 function cellKey(lat,lng){ return (Math.floor(lat/2.5)*2.5).toFixed(1)+","+(Math.floor(lng/2.5)*2.5).toFixed(1); }
+let lastPick=0, lastPickCell='';
 function pick(lat,lng){
+  const cell=cellKey(lat,lng), now=performance.now();
+  // onGlobeClick and the pointerup fallback both fire for one tap: run the
+  // selection redraw once per tap instead of twice.
+  if(cell===lastPickCell && now-lastPick<250) return;
+  lastPick=now; lastPickCell=cell;
   liveTrack=null;
-  sel.lat=lat; sel.lng=lng; sel.cell=cellKey(lat,lng); applyCell();
-  document.getElementById('bars').style.display='none';   // stale result from the previous cell must not linger
-  document.getElementById('verdict').textContent='';
-  redraw();
+  sel.lat=lat; sel.lng=lng; sel.cell=cell; applyCell();
+  const res=document.getElementById('result');
+  if(res) res.style.display='none';   // stale result from the previous cell must not linger
+  const vd=document.getElementById('verdict');
+  if(vd){ vd.style.display='none'; vd.textContent=''; }
+  redrawSelection();
   const p=world.pointOfView();
   world.pointOfView({lat, lng, altitude:Math.min(p.altitude,1.5)}, 900);
 }
 function applyCell(){
   const s=STATS && STATS[sel.cell], d=DEFS && DEFS[sel.cell+','+month];
-  document.getElementById('locread').innerHTML =
-    `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b>`;
+  document.getElementById('locread').innerHTML = s
+    ? `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · ${s.storms} storm${s.storms===1?'':'s'} since 2000 · RI ${s.ri_pct}% · weak ${s.weaken_pct}%`
+    : `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · no storms recorded in this cell`;
   const fb={WIND:65,PRES:990,DWIND_24:5,DWIND_12:5,DWIND_6:0,DPRES_6:-2,DPRES_24:-5,SST:29,DIST2LAND:300,SPEED:8};
   FIELDS.forEach(([k])=>{ document.getElementById('in-'+k).value = d && d[k]!==undefined ? d[k] : fb[k]; });
 }
