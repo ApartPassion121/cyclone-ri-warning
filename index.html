@@ -151,7 +151,10 @@
 
 <script>
 let W=null, STATS=null, DEFS=null, TRACK=null, LIVE=null, ENV=null, liveTrack=null;
-const CORRIDOR={lat:[5,40], lon:[110,145]};   // the training box (README: 5-40 N, 110-145 E)
+// The shipped model was fitted on 5-40 N, 110-145 E. A widened weights file
+// carries its own box in `domain`; a file without one falls back to this.
+const CORRIDOR={lat:[5,40], lon:[110,145]};
+let REGIONS=[];   // [{W,STATS,DEFS,TRACK,domain}] - one per weights file that loaded
 /* Colour ceiling for the RI layer. The old fixed 8% cut off 27 of 183 cells
    (max 33.3%), so whole stretches of the RI corridor shared one saturated red. */
 let RI_SCALE=8;
@@ -277,13 +280,19 @@ function graticulePaths(){
   function alongLatPoints(lng){ const pts=[]; for(let lat=-80; lat<=80; lat+=6) pts.push([lat,lng]); return pts; }
   function alongLngPoints(lat){ const pts=[]; for(let lng=-179; lng<=180; lng+=6) pts.push([lat,lng]); return pts; }
 }
+/* One frame per loaded model, so the drawn box always matches the box the
+   active weights were fitted on (two boxes once both widened models are in). */
 function framePaths(){
-  return [
-    P(alongLat(5,110,145,2.5),FRAME_COL,1.2,0.0028),
-    P(alongLat(40,110,145,2.5),FRAME_COL,1.2,0.0028),
-    P(alongLng(110,5,40,2.5),FRAME_COL,1.2,0.0028),
-    P(alongLng(145,5,40,2.5),FRAME_COL,1.2,0.0028)
-  ];
+  const boxes = REGIONS.length ? REGIONS.map(r=>r.domain) : [CORRIDOR];
+  const out=[];
+  for(const b of boxes){
+    const la=b.lat, lo=b.lon;
+    out.push(P(alongLat(la[0],lo[0],lo[1],2.5),FRAME_COL,1.2,0.0028),
+             P(alongLat(la[1],lo[0],lo[1],2.5),FRAME_COL,1.2,0.0028),
+             P(alongLng(lo[0],la[0],la[1],2.5),FRAME_COL,1.2,0.0028),
+             P(alongLng(lo[1],la[0],la[1],2.5),FRAME_COL,1.2,0.0028));
+  }
+  return out;
 }
 function crossPaths(){
   return [
@@ -642,7 +651,11 @@ function conds(){
 function vals(){
   const v={};
   FIELDS.forEach(([k])=>{ const raw=document.getElementById('in-'+k).value.trim(); v[k]=raw===''?NaN:parseFloat(raw); });
-  v.LAT=sel.lat; v.LON=sel.lng; v.MONTH=month; return v;
+  v.LAT=sel.lat; v.LON=sel.lng; v.MONTH=month;
+  // Widened models replace the linear longitude with this cyclic pair; both
+  // keys are always present so either feature set scores.
+  v.LON_SIN=Math.sin(sel.lng*Math.PI/180); v.LON_COS=Math.cos(sel.lng*Math.PI/180);
+  return v;
 }
 function missingFields(){
   const v=vals();
@@ -662,28 +675,47 @@ function fieldsGate(){
    at all (3 N used to score 97 %), so refuse rather than extrapolate. */
 // signed on purpose: the corridor is 5-40 N, so a southern-hemisphere click
 // must be refused too, not folded in by an absolute value.
-function inBox(lat,lng){
-  return lat>=CORRIDOR.lat[0] && lat<=CORRIDOR.lat[1] &&
-         lng>=CORRIDOR.lon[0] && lng<=CORRIDOR.lon[1];
-}
-function outsideWhy(){   // which edge(s) of the box this point left
-  const why=[], la=CORRIDOR.lat, lo=CORRIDOR.lon;
-  if(sel.lat<la[0]) why.push(`south of ${la[0]}°N`);
-  if(sel.lat>la[1]) why.push(`north of ${la[1]}°N`);
-  if(sel.lng<lo[0]) why.push(`west of ${lo[0]}°E`);
-  if(sel.lng>lo[1]) why.push(`east of ${lo[1]}°E`);
-  return why;
-}
 const fmtLat=v=>`${Math.abs(v).toFixed(1)}°${v>=0?'N':'S'}`;
 const fmtLng=v=>`${Math.abs(v).toFixed(1)}°${v>=0?'E':'W'}`;
+/* A model's own training box, in +-180 longitude so 180 E and 180 W are the
+   same number and a box the model declares can cross the dateline. */
+function domainOf(w){
+  const d=w && w.domain, lo=d && (d.lon_pm180||d.lon);
+  return (d && d.lat && lo) ? {lat:d.lat, lon:lo} : CORRIDOR;
+}
+function within(dom,lat,lng){
+  return lat>=dom.lat[0] && lat<=dom.lat[1] && lng>=dom.lon[0] && lng<=dom.lon[1];
+}
+// last match wins: widened models are added after the shipped one and overlap it
+function regionFor(lat,lng){ return REGIONS.filter(r=>within(r.domain,lat,lng)).pop() || null; }
+// kept for callers that only ask "is this point covered", e.g. the live-storm list
+function inBox(lat,lng){ return !!regionFor(lat,lng); }
+function covers(dom,box){
+  return dom.lat[0]<=box.lat[0] && dom.lat[1]>=box.lat[1] &&
+         dom.lon[0]<=box.lon[0] && dom.lon[1]>=box.lon[1];
+}
+function domText(dom){ return `${dom.lat[0]}–${dom.lat[1]} °N, ${fmtLng(dom.lon[0])}–${fmtLng(dom.lon[1])}`; }
+/* Switching model means switching its climatology too: the bars, the prefill,
+   the track table and the base rate all belong to the region, not the page. */
+function adopt(r){
+  if(!r || REGIONS.active===r) return;
+  REGIONS.active=r;
+  W=r.W; STATS=r.STATS; DEFS=r.DEFS; TRACK=r.TRACK;
+  BASE_RATE=undefined; PTS_CACHE=null; PTS_KEY=''; DEFS_IDX=null; SEASON_TOT=null;
+  RI_SCALE=riScale();
+}
 function corridorGate(){
-  const ok=inBox(sel.lat, sel.lng), btn=document.getElementById('predict'), vd=document.getElementById('verdict');
-  if(btn) btn.disabled=!ok;
-  if(ok){ if(vd && vd.dataset.na){ vd.style.display='none'; vd.textContent=''; vd.className=''; delete vd.dataset.na; } return true; }
+  const r=regionFor(sel.lat, sel.lng), btn=document.getElementById('predict'), vd=document.getElementById('verdict');
+  if(btn) btn.disabled=!r;
+  if(r){
+    adopt(r);
+    if(vd && vd.dataset.na){ vd.style.display='none'; vd.textContent=''; vd.className=''; delete vd.dataset.na; }
+    return true;
+  }
   const res=document.getElementById('result'); if(res) res.style.display='none';
   vd.style.display='block'; vd.className='v-na'; vd.dataset.na='1';
-  const why=outsideWhy();
-  vd.innerHTML=`<b>NO PREDICTION</b> — ${fmtLat(sel.lat)} ${fmtLng(sel.lng)} is outside the 5–40 °N, 110–145 °E training box${why.length?` (too far ${why.join(' and ')})`:''}. The model never saw a storm there.`;
+  const boxes=[...new Set((REGIONS.length?REGIONS.map(x=>x.domain):[CORRIDOR]).map(domText))].join(' or ');
+  vd.innerHTML=`<b>NO PREDICTION</b> — ${fmtLat(sel.lat)} ${fmtLng(sel.lng)} is outside the training ${REGIONS.length>1?'domains':'box'} (${boxes}). The model never saw a storm there.`;
   return false;
 }
 /* The archive's own RI rate, so a 62 % score is read against the 4.7 % that
@@ -977,11 +1009,24 @@ document.querySelectorAll('.wnd').forEach(b=> b.onclick=()=>{
 loadCoastlines();
 // The wind file is ~5 MB; the model data is a few hundred KB. Loading it
 // separately means the cells and picking are live long before the wind lands.
-Promise.all([fetch('model_weights.json').then(r=>r.json()), fetch('region_stats.json').then(r=>r.json()), fetch('region_defaults.json').then(r=>r.json()),
-  fetch('track_climatology.json').then(r=>r.json()).catch(()=>null),
-  fetch('live_storms.json').then(r=>r.json()).catch(()=>null),
-  fetch('era5_env.json').then(r=>r.json()).catch(()=>null)])
- .then(([w,s,d,t2,l2,e2])=>{ W=w; STATS=s; DEFS=d; TRACK=t2; LIVE=l2; ENV=e2; RI_SCALE=riScale();
+const getJSON=f=>fetch(f).then(r=>r.ok?r.json():null).catch(()=>null);
+// model_weights.json is the shipped 110-145 E fit; the _wp/_east files are the
+// widened pair. Whatever is absent is skipped, so the page runs on whichever
+// weights are present - one file alone still behaves exactly as before.
+Promise.all([getJSON('model_weights.json'), getJSON('region_stats.json'), getJSON('region_defaults.json'),
+  getJSON('track_climatology.json'), getJSON('live_storms.json'), getJSON('era5_env.json'),
+  getJSON('model_weights_wp.json'), getJSON('region_stats_wp.json'), getJSON('region_defaults_wp.json'), getJSON('track_climatology_wp.json'),
+  getJSON('model_weights_east.json'), getJSON('region_stats_east.json'), getJSON('region_defaults_east.json'), getJSON('track_climatology_east.json')])
+ .then(([w0,s0,d0,t0,l2,e2, wW,sW,dW,tW, wE,sE,dE,tE])=>{
+   LIVE=l2; ENV=e2; REGIONS=[];
+   const add=(w,s,d,t)=>{ if(w && w.features) REGIONS.push({W:w, STATS:s||{}, DEFS:d||{}, TRACK:t||null, domain:domainOf(w)}); };
+   add(w0,s0,d0,t0); add(wW,sW,dW,tW); add(wE,sE,dE,tE);
+   if(!REGIONS.length) throw new Error('no weights');
+   // a widened box that contains the old one makes the old file redundant: drop
+   // it rather than draw a frame inside a frame
+   if(REGIONS.length>1 && REGIONS.slice(1).some(r=>covers(r.domain, REGIONS[0].domain))) REGIONS.shift();
+   STATIC_PATHS=null;   // the drawn frame depends on which domains loaded
+   adopt(regionFor(sel.lat,sel.lng) || REGIONS[0]);
    PTS_CACHE=null; PTS_KEY=''; DEFS_IDX=null;   // data arrived after any early empty build
    renderLive(); applyCell(); redraw(); windKick(); })
  .catch(e=>{ document.getElementById('locread').textContent='JSON files missing — they must sit next to index.html.'; });
