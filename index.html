@@ -40,6 +40,7 @@
   #live { margin:0 0 7px; border:1px solid #4a3410; background:rgba(122,72,8,.13); padding:6px 7px; line-height:1.55; display:none; }
   #live .lh { color:#ffb35c; letter-spacing:.09em; font-size:10px; }
   #live .lstorm { cursor:pointer; color:#ffd9a8; }
+  #live .cicon { width:12px; height:12px; vertical-align:-2px; margin-right:3px; }
   #live .lstorm:hover { color:#fff; text-decoration:underline; }
   #live .lm { color:#8fa3ad; }
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:5px 8px; }
@@ -52,6 +53,12 @@
   #custom input:focus { outline:none; border-color:#71858f; }
   #c-place { color:#8fd0ff; cursor:pointer; font-size:10px; letter-spacing:.08em; }
   #c-place:hover { color:#c8e9ff; }
+  #c-note { color:#8fa3ad; font-size:10px; line-height:1.45; margin:1px 0 4px; display:none; }
+  #c-draw { display:flex; align-items:center; gap:5px; margin:0 0 3px; }
+  #c-draw .k { color:#697d87; }
+  #c-draw .lnk { color:#9db0ba; }
+  #c-draw .lnk.on { color:#fff; background:#33434d; }
+  #c-count { color:#4d5f69; }
   #predict { width:100%; margin-top:8px; background:#b03a2e; color:#fff; border:none; padding:6px; font:inherit; font-size:11px; font-weight:600; letter-spacing:.12em; cursor:pointer; }
   #predict:hover { background:#c14436; }
   #result { margin-top:8px; display:none; }
@@ -68,6 +75,9 @@
   .v-st { background:rgba(127,176,105,.11); border-color:#7fb069; }
   .v-na { background:rgba(201,162,39,.12); border-color:#c9a227; }
   #predict:disabled { opacity:.45; cursor:not-allowed; }
+  #fc24 { margin-top:7px; border-top:1px solid #26333b; padding-top:6px; color:#8fa3ad; line-height:1.55; display:none; }
+  #fc24 b { color:#e8eef1; font-weight:500; }
+  #fc24 .note { color:#4d5f69; line-height:1.45; margin-top:3px; font-size:10px; }
   #conds { margin-top:8px; border-top:1px solid #26333b; padding-top:6px; color:#8fa3ad; line-height:1.6; display:none; }
   #conds .hd { color:#8fa3ad; letter-spacing:.09em; font-size:10px; margin-bottom:3px; }
   #conds .ok { color:#7fb069; } #conds .bad { color:#e08a4c; } #conds .na { color:#4d5f69; }
@@ -124,7 +134,7 @@
   <div id="scalecap"></div>
   <div id="scalebar"></div>
   <div id="scalevals"><span id="sv1">0%</span><span id="sv2"></span><span id="sv3">8%+</span></div>
-  <div class="hint">click a cell · hover for history · orange = live storm</div>
+  <div class="hint">click a cell · hover for history · spiral = storm · DRAW = click a track · PLACE = one point</div>
   <div id="windread" style="color:#4d5f69"></div>
   <div style="color:#4d5f69">NOAA IBTrACS · OISST · ERA5 · Open-Meteo · not an official forecast</div>
 </div>
@@ -143,6 +153,14 @@
       <input id="c-lat" type="number" step="0.1" placeholder="lat °"><input id="c-lon" type="number" step="0.1" placeholder="lon °">
       <span class="lnk" id="c-place">PLACE</span>
     </div>
+    <div id="c-draw">
+      <span class="k">Path</span>
+      <span class="lnk" id="c-draw-btn">DRAW</span>
+      <span class="lnk" id="c-undo">UNDO</span>
+      <span class="lnk" id="c-clear">CLEAR</span>
+      <span id="c-count"></span>
+    </div>
+    <div id="c-note"></div>
     <div id="monthnote"></div>
     <div class="grid" id="form"></div>
     <button id="predict">RUN</button>
@@ -153,6 +171,7 @@
       <div id="baserate"></div>
     </div>
     <div id="verdict"></div>
+    <div id="fc24"></div>
     <div id="conds"></div>
     <div id="track"></div>
   </div>
@@ -196,25 +215,90 @@ document.getElementById('open').onclick=()=>{ document.getElementById('panel').s
 /* A storm the archive never had: place it at exact coordinates, then edit its
    features in the form and RUN. The 24 h forecast keeps the typical direction
    for the cell it sits in and uses the motion you typed. */
+/* Feedback for the hand-entry boxes: the old version only tinted the row, so a
+   typo looked like a click that did nothing. */
+function cNote(msg, bad){
+  const el=document.getElementById('c-note'); if(!el) return;
+  el.textContent=msg||''; el.style.display=msg?'block':'none';
+  el.style.color=bad?'#e08a4c':'#8fa3ad';
+}
 function placeCustom(){
-  const la=parseFloat(document.getElementById('c-lat').value);
-  const lo=parseFloat(document.getElementById('c-lon').value);
-  const box=document.getElementById('custom');
-  if(!Number.isFinite(la)||!Number.isFinite(lo)||Math.abs(la)>90||Math.abs(lo)>180){
-    box.style.color='#c9a227'; return; }
-  box.style.color='';
+  const rawLa=document.getElementById('c-lat').value.trim();
+  const rawLo=document.getElementById('c-lon').value.trim();
+  const la=parseFloat(rawLa), lo=parseFloat(rawLo);
+  if(rawLa===''||rawLo===''){ cNote('enter a latitude and a longitude', true); return; }
+  if(!Number.isFinite(la)||!Number.isFinite(lo)){ cNote('both coordinates must be numbers', true); return; }
+  if(Math.abs(la)>90||Math.abs(lo)>180){ cNote('latitude −90…90, longitude −180…180', true); return; }
+  drawPts=[]; drawing=false; drawnLabel();   // PLACE is the other way in: it clears a drawn path
   selCustom=true; liveTrack=null;
   sel.lat=la; sel.lng=lo; sel.cell=cellKey(la,lo);
-  const r=regionFor(la,lo); if(r) adopt(r);
+  const r=regionFor(la,lo); if(r) adopt(r);   // no box means the model refuses this point
   applyCell();
   const sp=document.getElementById('in-SPEED');
   if(sp && !sp.value) sp.value=12;
   redraw(); predict();
+  const e=trackEnd();
+  cNote(`placed at ${fmtLat(la)} ${fmtLng(lo)}` + (!r ? ' · outside both training boxes, so no prediction'
+    : e ? ` · 24 h heading ${fmtLat(e.lat)} ${fmtLng(e.lng)}` : ''), !r);
   const p=world.pointOfView();
   world.pointOfView({lat:la, lng:lo, altitude:Math.min(p.altitude,1.4)}, 900);
 }
 document.getElementById('c-place').onclick=placeCustom;
 ['c-lat','c-lon'].forEach(id=> document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') placeCustom(); }));
+
+/* Draw a pathway for a storm the archive never had: DRAW turns every globe click
+   into a 6-hour fix, UNDO drops the last one, CLEAR starts again. The last leg you
+   drew sets the heading and the speed (written into MOTION KT, so the model scores
+   the storm you drew), and the next 24 h is that leg projected 24 hours on - unless
+   you type a different speed, which then wins. */
+const DRAW_STEP_H=6;
+let drawing=false, drawPts=[], drawStamp=0, drawAt=null;
+function drawnMotion(){
+  const n=drawPts.length; if(n<2) return null;
+  const a=drawPts[n-2], b=drawPts[n-1];
+  const km=kmBetween(a.lat,a.lng,b.lat,b.lng);
+  if(!(km>1)) return null;   // two clicks on the same spot carry no heading
+  return {dLat:b.lat-a.lat, dLon:b.lng-a.lng, km, kt:km/DRAW_STEP_H/1.852};
+}
+function drawnLabel(){
+  const btn=document.getElementById('c-draw-btn'); if(!btn) return;
+  btn.textContent = drawing?'DRAWING':'DRAW';
+  btn.classList.toggle('on', drawing);
+  document.getElementById('c-count').textContent = drawPts.length ? `${drawPts.length} fix${drawPts.length>1?'es':''}` : (drawing?'click the globe':'');
+}
+function applyDrawn(){   // re-derive the storm after a click, an undo or a clear
+  drawnLabel();
+  if(!drawPts.length){ selCustom=false; applyCell(); redraw(); predict(); cNote(drawing?'drawing: each globe click adds a 6 h fix':''); return; }
+  const last=drawPts[drawPts.length-1];
+  selCustom=true; liveTrack=null;
+  sel.lat=last.lat; sel.lng=last.lng; sel.cell=cellKey(last.lat,last.lng);
+  const reg=regionFor(last.lat,last.lng); if(reg) adopt(reg);
+  const dm=drawnMotion(), sp=document.getElementById('in-SPEED');
+  if(dm && sp) sp.value=dm.kt.toFixed(1);
+  redraw(); predict();
+  const e=trackEnd();
+  cNote(`${drawPts.length} fix${drawPts.length>1?'es':''}`+(dm?` · ${Math.round(dm.kt)} kt ${compass(dm.dLat,dm.dLon)}`:'')+
+    (e?` · next 24 h ${fmtLat(e.lat)} ${fmtLng(e.lng)}`:'')+(drawing?' · click to add the next fix':''), false);
+}
+function addWaypoint(lat,lng){
+  const now=performance.now();   // one press fires pointerup and click: that is one fix, not two
+  if(drawAt && now-drawStamp<400 && Math.abs(lat-drawAt.lat)<0.25 && Math.abs(lng-drawAt.lng)<0.25) return;
+  drawStamp=now; drawAt={lat,lng};
+  const first=!drawPts.length;
+  drawPts.push({lat, lng});
+  if(first){   // the first fix picks the cell, so the form is pre-filled from it once
+    selCustom=true; sel.lat=lat; sel.lng=lng; sel.cell=cellKey(lat,lng);
+    const reg=regionFor(lat,lng); if(reg) adopt(reg);
+    applyCell();
+  }
+  applyDrawn();
+}
+function setDrawing(on){ drawing=on; drawnLabel(); if(on) cNote('drawing: each globe click adds a 6 h fix', false); }
+document.getElementById('c-draw-btn').onclick=()=> setDrawing(!drawing);
+['c-undo','c-clear'].forEach(id=> document.getElementById(id).onclick=()=>{
+  if(id==='c-undo') drawPts.pop(); else { drawPts=[]; drawing=false; }
+  applyDrawn();
+});
 
 /* ---------- colour scale (also drives the field layer) ---------- */
 const STOPS=[[43,131,186],[90,180,172],[166,219,160],[254,224,139],[253,174,97],[215,25,28]];
@@ -249,7 +333,8 @@ const world = Globe()(document.getElementById('globe'))
   .polygonStrokeColor(()=> '#0e1a24')
   .polygonLabel(d=>d.properties.tip)
   // custom geometry: cells are drawn as our own sphere-hugging meshes (the polygon cap fill renders as shards)
-  .customThreeObject(d=> d.wind ? windObject() : cellMesh(d))
+  // custom geometry carries the cells, the wind flow and the storm spirals
+  .customThreeObject(d=> d.cyclone ? cycloneMesh(d) : d.wind ? windObject() : cellMesh(d))
   .customThreeObjectUpdate(obj=>{ obj.position.set(0,0,0); })
   // heatmap geometry: smooth KDE surface field
   .heatmapPointLat('lat').heatmapPointLng('lng').heatmapPointWeight('w')
@@ -437,12 +522,16 @@ function dotOf(c){
 function fieldOf(c){ return {lat:c.lat,lng:c.lng,w:0.1+0.9*c.t}; }
 
 /* ---------- live storms (IBTrACS ACTIVE via live_storms.json) ---------- */
+/* A storm is on the globe only while the frame on screen is inside its tracked
+   history: before its first report it had not formed, after its last one it has
+   dissipated. null means "not here now" - it used to return the final position,
+   which left every finished storm pinned on the globe as if still running. */
 function effPos(st){
   const fin={lat:st.lat, lon:st.lon, replay:false};
   if(!st.history || !st.history.length || !WINDJ) return fin;
   const t=frameMs(tIdx), H=st.history;
   const ms=h=>Date.parse(h.time_utc.replace(' ','T')+'Z');
-  if(t<ms(H[0]) || t>ms(H[H.length-1])) return fin;
+  if(t<ms(H[0]) || t>ms(H[H.length-1])) return null;
   for(let i=0;i<H.length-1;i++){
     const ta=ms(H[i]), tb=ms(H[i+1]);
     if(t>=ta && t<=tb){ const f=(tb-ta)?(t-ta)/(tb-ta):0, a=H[i], b=H[i+1];
@@ -451,15 +540,72 @@ function effPos(st){
   }
   return fin;
 }
-function livePoints(){
-  if(!LIVE || !LIVE.storms) return [];
-  return LIVE.storms.map(st=>{ const ep=effPos(st);
-    return {lat:ep.lat, lng:ep.lon, color:'#ff7847', r:0.55, alt:0.02,
-      tip: ep.replay ? `${st.name} · ${ep.wind} kt · ${frameLabel(tIdx)} (replay)` : `${st.name} · ${st.wind_kt} kt · ${st.pres_hpa} hPa · ${st.time_utc} UTC`}; });
+function liveNow(){   // storms that exist at the frame on screen, with their position
+  const out=[];
+  for(const st of (LIVE && LIVE.storms) || []){
+    const ep=effPos(st); if(!ep) continue;
+    out.push({st, ep, wind:Number.isFinite(ep.wind)?ep.wind:st.wind_kt});
+  }
+  return out;
 }
-function liveLabels(){
-  if(!LIVE || !LIVE.storms) return [];
-  return LIVE.storms.map(st=>{ const ep=effPos(st); return {lat:ep.lat, lng:ep.lon, label:st.name.toUpperCase()}; });
+/* The marker is a hurricane spiral built as geometry, not the orange bar it used
+   to be: three tapered arms around a pale eye, lying on the globe just above the
+   cells. Built, not textured - a textured sprite or plane draws nothing in this
+   renderer - and in two flat tones rather than an interpolated colour, because a
+   vertex-coloured material throws an invalid shader program here. Level of
+   detail is fixed, so a time step only re-makes these two small meshes. */
+const CYCLONE_ARMS=3, CYCLONE_SWEEP=2.0, CYCLONE_STEPS=10;
+// two shared materials: a new one per time step made the renderer log an invalid
+// program when the previous step's meshes were torn down
+const CYCLONE_MAT_ARM=new THREE.MeshBasicMaterial({color:0xff7f36, transparent:true, opacity:0.97,
+  side:THREE.DoubleSide, depthWrite:false});
+const CYCLONE_MAT_EYE=new THREE.MeshBasicMaterial({color:0xfff0d4, transparent:true, opacity:0.97,
+  side:THREE.DoubleSide, depthWrite:false});
+function cycloneMesh(d){
+  const lonK=1/Math.max(0.25, Math.cos(d.lat*Math.PI/180));
+  const r0=0.6, r1=2.7, w0=0.14, w1=0.78;   // degrees: a 5.4 deg pinwheel, arms about 0.8 deg thick
+  const arms=[], eye=[];
+  const put=(into,u,v)=>{ const p=world.getCoords(d.lat+v, d.lng+u*lonK, 0.02); into.push(p.x,p.y,p.z); };
+  for(let a=0;a<CYCLONE_ARMS;a++){
+    const rot=a*2*Math.PI/CYCLONE_ARMS, ring=[];
+    for(let i=0;i<=CYCLONE_STEPS;i++){
+      const t=i/CYCLONE_STEPS, th=t*CYCLONE_SWEEP, r=r0*Math.pow(r1/r0,t), w=w0+(w1-w0)*t;
+      const ca=Math.cos(th+rot), sa=Math.sin(th+rot);
+      ring.push([r*ca-ca*w/2, r*sa-sa*w/2, r*ca+ca*w/2, r*sa+sa*w/2]);
+    }
+    for(let i=0;i<CYCLONE_STEPS;i++){
+      const A=ring[i], B=ring[i+1];
+      put(arms,A[0],A[1]); put(arms,A[2],A[3]); put(arms,B[2],B[3]);
+      put(arms,A[0],A[1]); put(arms,B[2],B[3]); put(arms,B[0],B[1]);
+    }
+  }
+  const EYE=14;   // small pale disc, so the centre reads at any zoom
+  for(let i=0;i<EYE;i++){
+    const t0=i/EYE*2*Math.PI, t1=(i+1)/EYE*2*Math.PI;
+    put(eye,0,0);
+    put(eye,0.36*Math.cos(t0),0.36*Math.sin(t0));
+    put(eye,0.36*Math.cos(t1),0.36*Math.sin(t1));
+  }
+  const tone=(pts,mat)=>{   // one flat-coloured mesh; raycast off so clicks reach the globe
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
+    const m=new THREE.Mesh(g, mat);
+    m.raycast=()=>{}; m.renderOrder=8;
+    return m;
+  };
+  const grp=new THREE.Group();
+  grp.add(tone(arms,CYCLONE_MAT_ARM), tone(eye,CYCLONE_MAT_EYE));   // the update hook pins the group at the origin
+  return grp;
+}
+/* Every cyclone the globe draws: the live ones at their frame position, plus the
+   hand-placed one, which gets the same spiral rather than a lone dot. */
+function stormMarkers(){
+  const out=liveNow().map(({st,ep})=>({cyclone:true, sid:st.sid, lat:ep.lat, lng:ep.lon}));
+  if(selCustom) out.push({cyclone:true, sid:'custom', lat:sel.lat, lng:sel.lng});
+  return out;
+}
+function liveLabels(){   // name above the spiral, not across its eye
+  return liveNow().map(({st,ep})=>({lat:ep.lat+3.4, lng:ep.lon, label:st.name.toUpperCase()}));
 }
 function renderLive(){
   const box=document.getElementById('live');
@@ -472,14 +618,21 @@ function renderLive(){
   const gen=Date.parse((LIVE.generated_utc||'').replace(' ','T')+'Z');
   box.innerHTML = LIVE.storms.map((st,i)=>{
     const ageH=(gen-Date.parse(st.time_utc.replace(' ','T')+'Z'))/36e5;
-    const badge = ageH<=36 ? 'LIVE' : 'LAST STORM';
+    const gone = ageH>36;   // no new report for a day and a half: the storm is over
     const ep=effPos(st);
-    const when = ep.replay ? `<div class="lm">replaying ${frameLabel(tIdx)}: ${ep.wind} kt · ${ep.pres} hPa</div>` : '';
-    return `<div><span class="lh">● ${badge}</span> <span class="lstorm" data-i="${i}">${st.name}</span> <span class="lm">${st.wind_kt} kt · ${st.pres_hpa} hPa · ${st.time_utc} UTC</span></div>
-    <div class="lm">model: RI ${st.prediction.RI}% · STEADY ${st.prediction.STEADY}% · WEAK ${st.prediction.WEAKEN}%`+
-      (inBox(st.lat, st.lon) ? '' : ` <span style="color:#c9a227">· outside the training box, extrapolated</span>`) + `</div>` + when;
+    const when = ep && ep.replay ? `<div class="lm">replaying ${frameLabel(tIdx)}: ${ep.wind} kt · ${ep.pres} hPa</div>` : '';
+    return `<div><span class="lh">● ${gone?'LAST STORM':'LIVE'}</span> <img class="cicon" src="cyclone.svg" alt=""><span class="lstorm" data-i="${i}">${st.name}</span> <span class="lm">${st.wind_kt} kt${st.pres_hpa!=null?` · ${st.pres_hpa} hPa`:''} · ${st.time_utc} UTC</span></div>`+
+    (gone ? `<div class="lm">dissipated ${whenUTC(st.time_utc)} UTC · its last report, so it is off the globe at now</div>` : '')+
+    `<div class="lm">model: RI ${st.prediction.RI}% · STEADY ${st.prediction.STEADY}% · WEAK ${st.prediction.WEAKEN}%`+
+      (inBox(st.lat, st.lon) ? '' : ` <span style="color:#c9a227">· outside the training box, extrapolated</span>`) + `</div>`+
+      ((f=>f?`<div class="lm">24 h: ${fc24Line(f)}</div>`:'')(forecast24(st.wind_kt, st.pres_hpa, st.prediction)))+
+      when;
   }).join('');
   box.querySelectorAll('.lstorm').forEach(el=> el.onclick=()=>loadLive(+el.dataset.i));
+}
+function whenUTC(s){   // "2026-11-11 12:00" -> "11 Nov 12:00"
+  const d=new Date(Date.parse(s.replace(' ','T')+'Z'));
+  return `${d.getUTCDate()} ${MNAMES[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2,'0')}:00`;
 }
 function   loadLive(i){
   const st=LIVE.storms[i]; if(!st) return;
@@ -492,6 +645,36 @@ function   loadLive(i){
   conds();   // applyCell painted the cell defaults; the storm's own values are now in the form
   redraw(); predict();
   world.pointOfView({lat:st.lat, lng:st.lon, altitude:1.5}, 900);
+}
+
+/* ---------- 24 h intensity forecast ---------- */
+/* The model predicts a class, not a number, so the 24 h change it implies is the
+   class change itself - ±30 kt at the RI and weakening thresholds - weighted by
+   the probabilities the bars show. Pressure follows the wind through the
+   Atkinson-Holliday exponent (0.644), anchored on the storm's own current
+   pressure so the forecast starts exactly where the observed pair is. */
+const WP_EXP=1/0.644;
+function forecast24(wind, pres, P){
+  if(!Number.isFinite(wind)||!Number.isFinite(pres)||!P) return null;
+  const ri=P.RI||0, wk=P.WEAKEN||0;   // 0-1 from the live model, 0-100 from live_storms.json
+  const dW=30*(ri-wk)/(ri>1||wk>1?100:1), w24=wind+dW;
+  if(!(w24>0)||!(wind>1)) return null;
+  const p24=1010-(1010-pres)*Math.pow(w24/wind, WP_EXP);
+  return {wind:Math.round(wind), w24:Math.round(w24), pres:Math.round(pres), p24:Math.round(p24)};
+}
+function fc24Signed(n){ return (n>=0?'+':'−')+Math.abs(n); }
+function fc24Line(f){   // one wording for the panel block and the live-storm box
+  return `wind ${f.wind} → ${f.w24} kt (${fc24Signed(f.w24-f.wind)}) · ${f.pres} → ${f.p24} hPa (${fc24Signed(f.p24-f.pres)})`;
+}
+function showFC24(f){
+  const el=document.getElementById('fc24'); if(!el) return;
+  if(!f){ el.innerHTML=''; el.style.display='none'; return; }
+  el.innerHTML=
+    `<span style="color:#697d87">24 h forecast</span> `+
+    `wind <b>${f.wind} → ${f.w24} kt</b> <span style="color:#8fa3ad">(${fc24Signed(f.w24-f.wind)})</span> · `+
+    `pressure <b>${f.pres} → ${f.p24} hPa</b> <span style="color:#8fa3ad">(${fc24Signed(f.p24-f.pres)})</span>`+
+    `<div class="note">expected change at the ±30 kt class thresholds · pressure from the Atkinson–Holliday exponent, anchored on the current pressure · not an official forecast</div>`;
+  el.style.display='block';
 }
 
 /* ---------- track forecast (typical 24 h movement for the cell + month) ---------- */
@@ -531,9 +714,19 @@ function compass(dLat,dLon){
 /* A custom storm is wherever the user put it, not a cell centre, and it carries
    its own speed: keep the typical direction, replace the typical speed. */
 function trackEnd(){
-  const t=trackEntry(); if(!t) return null;
+  const dm = selCustom ? drawnMotion() : null;
+  const t=trackEntry();
+  if(!dm && !t) return null;
   const [a,b]=sel.cell.split(',').map(Number);
   const from = selCustom ? {lat:sel.lat, lng:sel.lng} : {lat:a+1.25, lng:b+1.25};
+  if(dm){   // heading and speed from the pathway the user drew
+    const sp=Number.isFinite(vals().SPEED)&&vals().SPEED>0 ? vals().SPEED : dm.kt;
+    const cesc=Math.max(0.25, Math.cos(from.lat*Math.PI/180));
+    const mag=Math.hypot(dm.dLat*111, dm.dLon*111*cesc);
+    const k=mag>1e-6 ? (sp*1.852*24)/mag : 0;   // the last leg, stretched to 24 h at that speed
+    return {lat:from.lat+dm.dLat*k, lng:from.lng+dm.dLon*k, fromLat:from.lat, fromLng:from.lng,
+            t:{src:'the pathway you drew', n:drawPts.length, months:0}, via:`${Math.round(sp)} kt`};
+  }
   let dLat=t.dLat, dLon=t.dLon, via='typical speed';
   const sp=vals().SPEED;
   if(selCustom && Number.isFinite(sp) && sp>0){
@@ -544,19 +737,14 @@ function trackEnd(){
   return {lat:from.lat+dLat, lng:from.lng+dLon, fromLat:from.lat, fromLng:from.lng, t, via};
 }
 function trackPaths(){
-  if(liveTrack){
-    const pts=[];
-    for(let i=0;i<=8;i++) pts.push([liveTrack.fromLat+(liveTrack.lat-liveTrack.fromLat)*i/8, liveTrack.fromLng+(liveTrack.lng-liveTrack.fromLng)*i/8]);
-    return [P(pts,'#ffb35c',2.2,0.01)];
-  }
+  if(selCustom) return [];   // a hand-placed storm draws its branch with the other pathways
   const e=trackEnd(); if(!e) return [];
   const pts=[];
   for(let i=0;i<=8;i++) pts.push([e.fromLat+(e.lat-e.fromLat)*i/8, e.fromLng+(e.lng-e.fromLng)*i/8]);
-  return [P(pts, selCustom?'#8fd0ff':'#7fb6d9', 2.2, 0.01)];
+  return [P(pts,'#7fb6d9', 2.2, 0.01)];
 }
 function trackPoint(){
-  if(liveTrack) return {lat:liveTrack.lat, lng:liveTrack.lng, color:'#ffb35c', r:0.3, alt:0.012,
-    tip:'24 h position · blend of storm motion + climatology · mean error 358 km'};
+  if(selCustom) return null;   // the pathway's own 24 h dot sits on that point already
   const e=trackEnd(); if(!e) return null;
   return {lat:e.lat, lng:e.lng, color:'#8fd0ff', r:0.3, alt:0.012,
     tip:`24 h position · ${e.t.src} · ${e.t.n} past storms · ${e.via} · mean error ${TRACK_ERR.clim} km`};
@@ -564,18 +752,75 @@ function trackPoint(){
 /* The README promises the track's measured error is shown next to the forecast,
    not hidden: blend = 358 km, climatology = 371 km mean error on the 2021-25 test years. */
 const TRACK_ERR={blend:358, clim:371};
+/* Pathway tracker for every storm that exists at the frame on screen: the track it
+   has already travelled (first fix to wherever it is now) in orange, and the 24 h
+   branch it is heading along in pale gold - the same blend of the storm's own
+   motion and the cell climatology the panel quotes, with the spiral at the head. */
+function unwrapLon(pts){   // a track crossing the dateline must not draw right across the globe
+  const out=[[pts[0][0], pts[0][1]]];
+  for(let i=1;i<pts.length;i++){
+    let lon=pts[i][1]; const prev=out[i-1][1];
+    while(lon-prev>180) lon-=360;
+    while(prev-lon>180) lon+=360;
+    out.push([pts[i][0], lon]);
+  }
+  return out;
+}
+function stormPaths(){
+  const out=[], ms=h=>Date.parse(h.time_utc.replace(' ','T')+'Z'), t=frameMs(tIdx);
+  for(const {st,ep} of liveNow()){
+    const H=st.history||[]; if(!H.length) continue;
+    const trail=[[H[0].lat,H[0].lon]];
+    for(const h of H){ if(ms(h)>t) break; trail.push([h.lat,h.lon]); }
+    if(ep.replay) trail.push([ep.lat,ep.lon]);   // between two fixes
+    if(trail.length>1) out.push(P(unwrapLon(trail),'#ff9e57',2.2,0.011));
+    const tr=st.track_24h;
+    if(tr) out.push(P(unwrapLon([[ep.lat,ep.lon],[ep.lat+tr.dLat, ep.lon+tr.dLon]]),'#ffe4b0',1.8,0.011));
+  }
+  // the pathway the user drew, with the 24 h branch extending its last leg
+  if(drawPts.length>1) out.push(P(unwrapLon(drawPts.map(p=>[p.lat,p.lng])),'#8fd0ff',3.4,0.012));
+  // the hand-placed storm has no observed past, only the branch it is heading along
+  if(selCustom){
+    const e=trackEnd();
+    if(e) out.push(P(unwrapLon([[e.fromLat,e.fromLng],[e.lat,e.lng]]),'#ffe4b0',1.8,0.011));
+  }
+  return out;
+}
+function drawDots(){   // every drawn fix except the last, which the spiral already marks
+  return drawPts.slice(0,-1).map((p,i)=>({lat:p.lat, lng:p.lng, color:'#8fd0ff', r:0.18, alt:0.013,
+    tip:`fix ${i+1} · ${fmtLat(p.lat)} ${fmtLng(p.lng)}`}));
+}
+function stormHeads(){   // the 24 h point at the end of each storm's pathway
+  const out=liveNow().filter(({st})=>st.track_24h).map(({st,ep})=>{
+    const tr=st.track_24h, f=forecast24(st.wind_kt, st.pres_hpa, st.prediction);
+    return {lat:ep.lat+tr.dLat, lng:ep.lon+tr.dLon, color:'#ffe4b0', r:0.26, alt:0.013,
+      tip:`${st.name} · 24 h position${f?` · ${f.w24} kt · ${f.p24} hPa`:''} · storm motion + climatology · mean error ${TRACK_ERR.blend} km`};
+  });
+  if(selCustom){
+    const e=trackEnd();
+    if(e) out.push({lat:e.lat, lng:e.lng, color:'#ffe4b0', r:0.26, alt:0.013,
+      tip:`custom storm · 24 h position · ${e.via} · mean error ${TRACK_ERR.clim} km`});
+  }
+  return out;
+}
 function trackInfo(){
   const box=document.getElementById('track'); if(!box) return;
   const e=liveTrack || trackEnd();
   if(!e){ box.style.display='none'; return; }
   box.style.display='block';
+  const drawn = e.t.src==='the pathway you drew';
   box.innerHTML = liveTrack
-    ? `<span class="k2">24 h track</span> ${e.lat.toFixed(1)}N ${e.lng.toFixed(1)}E <span class="k2">· storm motion + climatology · mean error ${TRACK_ERR.blend} km</span>`
-    : `<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· ${e.t.src}${e.t.months?' (nearest month)':''}, ${e.t.n} past storms · ${e.via} · mean error ${TRACK_ERR.clim} km</span>`;
+    ? `<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· storm motion + climatology · mean error ${TRACK_ERR.blend} km</span>`
+    : `<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· `+
+      (drawn ? `${e.t.src} (${e.t.n} fixes) · ${e.via} · a hand-drawn path has no measured error`
+             : `${e.t.src}${e.t.months?' (nearest month)':''}, ${e.t.n} past storms · ${e.via} · mean error ${TRACK_ERR.clim} km`)+`</span>`;
 }
 
 /* ---------- selection marker ---------- */
 function markerPoint(){
+  // a hand-placed storm already shows the spiral at this spot; a dot floating
+  // 8 units above it just looks like a second marker
+  if(selCustom) return null;
   return {lat:sel.lat,lng:sel.lng,color:'#ffc07a',r:0.14,alt:0.078,
     tip:`${fmtLat(sel.lat)} ${fmtLng(sel.lng)} · selected`};
 }
@@ -598,19 +843,23 @@ function redraw(){
   // three-globe strip the cached object (children emptied, geometry orphaned), so
   // re-adding it drew an empty husk. Visibility is toggled in windKick() instead.
   if(WINDJ) clData.push(WIND_DATUM);
-  world.customLayerData(clData);
+  CELL_DATA=clData;
+  renderCyclones();
 }
+/* The storms share the custom layer with the cells (three-globe has one): a time
+   step rebuilds this list, but the cell items keep their identity, so only the
+   one or two spiral meshes are actually re-made. */
+function renderCyclones(){ world.customLayerData(CELL_DATA.concat(stormMarkers())); }
 /* Selecting a cell only moves the marker, rings, label, crosshair and track -
    the cell meshes and the heatmap are left alone so a tap stays instant. */
 function redrawSelection(){
   updateLiveLayers();
-  world.pathsData(staticPaths().concat(crossPaths(), trackPaths()));
   setScale();
 }
 /* Time steps only move the live-storm layers. They deliberately do NOT touch the
    cell meshes or the heatmap (the expensive layers) — rebuilding those every
    playback step was the main source of stutter. */
-let PTS_CACHE=null, PTS_KEY='';
+let PTS_CACHE=null, PTS_KEY='', CELL_DATA=[];
 /* Dot/column objects are reused between time steps and clicks: handing
    three-globe fresh objects made it rebuild all 183 cylinders each time. */
 function dataPoints(){
@@ -619,13 +868,19 @@ function dataPoints(){
   if(PTS_KEY!==key || !PTS_CACHE){ PTS_CACHE=cells().map(dotOf); PTS_KEY=key; }
   return PTS_CACHE;
 }
+/* Paths are cheap (the static ones keep their identity, so only the crosshair,
+   the 24 h branch and the storm pathways are rebuilt): they belong with the rest
+   of the per-frame layer, or a time step leaves the track behind. */
+function renderPaths(){ world.pathsData(staticPaths().concat(crossPaths(), trackPaths(), stormPaths())); }
 function updateLiveLayers(){
   const pts=dataPoints();
   const tp=trackPoint();
-  world.pointsData(pts.concat(tp ? [markerPoint(), tp] : [markerPoint()], livePoints()));
+  world.pointsData(pts.concat([markerPoint(), tp].concat(stormHeads(), drawDots()).filter(Boolean)));
+  renderCyclones();
   world.ringsData([{lat:sel.lat,lng:sel.lng,color:['rgba(255,198,138,0.8)','rgba(255,198,138,0)']}]
-    .concat((LIVE&&LIVE.storms?LIVE.storms:[]).map(st=>{ const ep=effPos(st); return {lat:ep.lat,lng:ep.lon,color:['rgba(255,120,71,0.85)','rgba(255,120,71,0)']}; })));
-  world.labelsData([{lat:sel.lat,lng:sel.lng,label:selLabel()}].concat(liveLabels()));
+    .concat(liveNow().map(({ep})=>({lat:ep.lat,lng:ep.lon,color:['rgba(255,120,71,0.85)','rgba(255,120,71,0)']}))));
+  world.labelsData([{lat:sel.lat+(selCustom?3.4:0),lng:sel.lng,label:selLabel()}].concat(liveLabels()));
+  renderPaths();
   trackInfo();
 }
 function setScale(){
@@ -653,12 +908,13 @@ function scaleCaption(){
 function cellKey(lat,lng){ return (Math.floor(lat/2.5)*2.5).toFixed(1)+","+(Math.floor(lng/2.5)*2.5).toFixed(1); }
 let lastPick=0, lastPickCell='';
 function pick(lat,lng){
+  if(drawing){ addWaypoint(lat,lng); return; }   // drawing: a click is a fix, not a selection
   const cell=cellKey(lat,lng), now=performance.now();
   // onGlobeClick and the pointerup fallback both fire for one tap: run the
   // selection redraw once per tap instead of twice.
   if(cell===lastPickCell && now-lastPick<250) return;
   lastPick=now; lastPickCell=cell;
-  liveTrack=null; selCustom=false;
+  liveTrack=null; selCustom=false; cNote('');
   sel.lat=lat; sel.lng=lng; sel.cell=cell;
   // switch model before painting the cell, or the readout and the pre-filled form
   // come from the region the previous click landed in
@@ -669,6 +925,7 @@ function pick(lat,lng){
   if(cl){ cl.value=lat.toFixed(1); cn.value=lng.toFixed(1); }
   const res=document.getElementById('result');
   if(res) res.style.display='none';   // stale result from the previous cell must not linger
+  showFC24(null);
   const vd=document.getElementById('verdict');
   if(vd){ vd.style.display='none'; vd.textContent=''; }
   corridorGate();   // refuse (and disable RUN) outside the training corridor
@@ -728,8 +985,10 @@ function applyCell(){
   monthNote(d);
 }
 /* The six classic formation conditions. The first three are model inputs; the
-   last three come from the ERA5 climatology (typical value for this cell and
-   month, 2000-2020) and are context for the reader - they are NOT scored. */
+   last three come from the environment climatology (typical value for this cell
+   and month) and are context for the reader - they are NOT scored. Every drawn
+   cell-month now has all three: CAPE was added to every entry, including the
+   cells whose shear and humidity come from NCEP, which has no CAPE of its own. */
 const COND_TH={sst:26.5, cor:5, wind:34, shear:10, rh:55, cape:400};
 function conds(){
   const box=document.getElementById('conds'); if(!box) return;
@@ -744,7 +1003,7 @@ function conds(){
     row(e?e.RH>=COND_TH.rh:null,'Humidity 700',e?`${e.RH}% · ≥${COND_TH.rh}`:'no data')+
     row(e && e.CAPE!=null ? e.CAPE>=COND_TH.cape : null,'Instability',
         e ? (e.CAPE!=null ? `${e.CAPE} J/kg · ≥${COND_TH.cape}` : 'no ERA5 CAPE here') : 'no data')+
-    `<div class="note">first three are model inputs · ${e && e.SRC==='ncep' ? 'NCEP/NCAR' : 'ERA5'} rows are typical for this cell &amp; month: context, not scored</div>`;
+    `<div class="note">first three are model inputs · ${!e || e.SRC!=='ncep' ? 'ERA5' : 'NCEP/NCAR shear &amp; humidity, ERA5 CAPE'} values are typical for this cell &amp; month: context, not scored</div>`;
   box.style.display='block';
 }
 /* A cleared box is a missing measurement, not a zero: coercing it made an empty
@@ -766,6 +1025,7 @@ function fieldsGate(){
   const miss=missingFields(), vd=document.getElementById('verdict');
   if(!miss.length){ if(vd && vd.dataset.miss){ vd.style.display='none'; vd.textContent=''; vd.className=''; delete vd.dataset.miss; } return true; }
   const res=document.getElementById('result'); if(res) res.style.display='none';
+  showFC24(null);
   ['p-ri','p-we','p-st'].forEach(id=>{ document.getElementById(id).textContent=''; });
   vd.style.display='block'; vd.className='v-na'; vd.dataset.miss='1';
   vd.innerHTML=`<b>MISSING VALUES</b> — ${miss.slice(0,4).join(', ')}${miss.length>4?` and ${miss.length-4} more`:''} ${miss.length===1?'is':'are'} empty. All ${FIELDS.length} inputs are needed; click the globe to restore the defaults.`;
@@ -814,6 +1074,7 @@ function corridorGate(){
     return true;
   }
   const res=document.getElementById('result'); if(res) res.style.display='none';
+  showFC24(null);
   vd.style.display='block'; vd.className='v-na'; vd.dataset.na='1';
   const boxes=[...new Set((REGIONS.length?REGIONS.map(x=>x.domain):[CORRIDOR]).map(domText))].join(' or ');
   vd.innerHTML=`<b>NO PREDICTION</b> — ${fmtLat(sel.lat)} ${fmtLng(sel.lng)} is outside the training ${REGIONS.length>1?'domains':'box'} (${boxes}). The model never saw a storm there.`;
@@ -846,6 +1107,7 @@ function predict(){
   const br=basinBaseRate(), brEl=document.getElementById('baserate');
   if(brEl) brEl.innerHTML = br===null ? '' :
     `Observed basin base rate <b>${br.toFixed(1)}%</b> — the share of storm points in this basin that rapid-intensified in 24 h. These bars rank the risk; they are not calibrated probabilities.`;
+  showFC24(forecast24(v.WIND, v.PRES, P));
   const vd=document.getElementById('verdict'); vd.style.display='block';
   const T=W.warning_threshold;
   if(P.RI>=T){ vd.className='v-ri'; vd.innerHTML=`<b>RI WATCH</b> — prepare. Not an evacuation order.`; }
@@ -945,8 +1207,8 @@ function sampleP(lat,lon){   // kept out of windSample: 10k particles must not p
 }
 function nearestStorm(lat,lng){   // the only live pressure that is not a coarse grid cell
   let best=null, bd=1e9;
-  for(const st of (LIVE && LIVE.storms) || []){
-    const ep=effPos(st), pr=ep.pres!=null ? ep.pres : st.pres_hpa;
+  for(const {st,ep} of liveNow()){
+    const pr=ep.pres!=null ? ep.pres : st.pres_hpa;
     if(!Number.isFinite(pr)) continue;
     const d=kmBetween(lat,lng,ep.lat,ep.lon);
     if(d<bd){ bd=d; best={st,ep,pr,d}; }
@@ -1138,12 +1400,6 @@ Promise.all([getJSON('model_weights.json'), getJSON('region_stats.json'), getJSO
    renderLive(); applyCell(); redraw(); windKick(); })
  .catch(e=>{ document.getElementById('locread').textContent='JSON files missing — they must sit next to index.html.'; });
 fetch('wind_frames.json').then(r=>r.json()).then(w2=>{
-  // The generator can emit the same timestamp twice at the 6 h/3 h join; a
-  // duplicate is a dead step on the time bar, so keep the first of each time.
-  if(w2 && w2.frames && w2.frames.length){
-    const uniq=w2.frames.filter((f,i,a)=>i===0 || f.time!==a[i-1].time);
-    if(uniq.length!==w2.frames.length) w2.frames=uniq;
-  }
   WINDJ=w2;
   if(!WINDJ || !WINDJ.frames || !WINDJ.frames.length) return;
   let best=0, bd=1e18; WINDJ.frames.forEach((f,i)=>{ const dd=Math.abs(frameMs(i)-Date.now()); if(dd<bd){bd=dd;best=i;} });
@@ -1151,7 +1407,7 @@ fetch('wind_frames.json').then(r=>r.json()).then(w2=>{
   document.getElementById('timebar').style.display='flex';
   document.getElementById('tlabel').textContent=frameLabel(tIdx);
   // add the flow to the existing custom layer instead of rebuilding 183 cells
-  if(shape==='cells') world.customLayerData(world.customLayerData().concat([WIND_DATUM]));
+  if(shape==='cells'){ CELL_DATA=CELL_DATA.concat([WIND_DATUM]); renderCyclones(); }
   else redraw();   // other shapes must rebuild their own geometry anyway
   windKick();
 }).catch(()=>{});

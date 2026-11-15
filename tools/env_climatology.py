@@ -5,8 +5,11 @@
 
 era5_env.json holds, per cell x month, the typical environment the CONDITIONS
 panel shows: SHEAR (m/s, 200 hPa minus 850 hPa), RH (%, 700 hPa) and CAPE
-(J/kg). The shipped file was an ERA5 export for the original 110-145 E corridor,
-so every cell added by the widened fits had no rows at all.
+(J/kg). The shipped file is complete - 12,096 cell-months (1,008 cells x 12)
+with all three values on every entry - so a run normally fills nothing; the tool
+stays for re-runs and for cells a future box adds. It began as an ERA5 export
+for the 110-145 E corridor only, so every cell the widened fits added had no
+rows at all.
 
 ERA5 upper-air data needs a Copernicus CDS account, which this tool cannot use.
 Missing cells are therefore filled from the NCEP/NCAR Reanalysis 1 monthly
@@ -16,8 +19,9 @@ and each entry records where it came from:
     {"SHEAR": 40.5, "RH": 39, "CAPE": 812, "SRC": "era5"}
     {"SHEAR": 41.2, "RH": 37, "SRC": "ncep"}
 
-CAPE is not in the NCEP monthly means and is not invented here: an NCEP entry
-carries no CAPE, and the page says so for that cell. Cross-check against the
+CAPE is not in the NCEP monthly means and is not invented here: an entry this
+tool writes from NCEP carries no CAPE (the shipped file's NCEP cells instead got
+their CAPE from the completed ERA5 export). Cross-check against the
 ERA5 cells it can be compared with: shear 40.5 vs 39.1 and 63.4 vs 63.3 m/s on
 the two strong-jet cases, 4.3 vs 6.4 on a weak one; NCEP's 700 hPa humidity
 runs 5-10 points drier than ERA5, which matters only near the 55 % threshold.

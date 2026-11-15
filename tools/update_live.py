@@ -1,6 +1,8 @@
 # Regenerates live_storms.json and wind_frames.json; track_climatology.json is
 # static (exported by the model notebook).
 # Run by .github/workflows/live.yml every 6 hours. Source: IBTrACS ACTIVE (NOAA NCEI).
+# Storms: every North Pacific one in that feed (WP, EP and CP basins), each scored
+# by the fit for the box it sits in - the same choice the page makes in regionFor().
 import pandas as pd, numpy as np, json, math, urllib.request, io, os
 # This file lives in tools/; the JSON it reads and writes sits at the repo root.
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,42 +15,62 @@ for c in ['LAT','LON','WMO_WIND','TOKYO_WIND','USA_WIND','WMO_PRES','TOKYO_PRES'
     if c in df.columns: df[c] = pd.to_numeric(df[c], errors='coerce')
 df['WIND'] = df['WMO_WIND'].combine_first(df['TOKYO_WIND']).combine_first(df['USA_WIND'])
 df['PRES'] = df['WMO_PRES'].combine_first(df['TOKYO_PRES']).combine_first(df['USA_PRES'])
-W = json.load(open(at('model_weights.json'))); D = json.load(open(at('region_defaults.json'))); T = json.load(open(at('track_climatology.json')))
-def predict(f):
+# One fit per box, the same three the page chooses between: a storm east of the
+# dateline must be scored by the fit that saw east Pacific storms, not by the
+# 110-145 E corridor model extrapolated 60 degrees west of everything it learned.
+FITS = {}
+for name, (wf, rf, tf) in {
+        'wp':   ('model_weights_wp.json',   'region_defaults_wp.json',   'track_climatology_wp.json'),
+        'east': ('model_weights_east.json', 'region_defaults_east.json', 'track_climatology_east.json')}.items():
+    try: FITS[name] = {'W': json.load(open(at(wf))), 'D': json.load(open(at(rf))), 'T': json.load(open(at(tf)))}
+    except FileNotFoundError: pass   # a checkout without the widened pair still runs
+FITS['base'] = {'W': json.load(open(at('model_weights.json'))), 'D': json.load(open(at('region_defaults.json'))), 'T': json.load(open(at('track_climatology.json')))}
+def fit_for(lat, lon):
+    if 5 <= lat <= 40 and 110 <= lon <= 180: return FITS.get('wp', FITS['base'])
+    if 5 <= lat <= 40 and (lon <= -70 or lon >= 180): return FITS.get('east', FITS['base'])
+    return FITS['base']   # outside both boxes: still scored, the page flags it as extrapolated
+def cell_keys(lat, lon, month):   # centre key for track_climatology, SW corner for region_defaults
+    la = math.floor(lat/2.5)*2.5; lo = math.floor(lon/2.5)*2.5
+    return f"{la+1.25:.2f},{lo+1.25:.2f},{month}", f"{la:.1f},{lo:.1f},{month}"
+def predict(W, f):
     vals = [(f[ft]-W['scaler_mean'][i])/W['scaler_scale'][i] for i, ft in enumerate(W['features'])]
     zs = {c: sum(vals[i]*W['coef'][ci][i] for i in range(len(vals)))+W['intercept'][ci] for ci, c in enumerate(W['classes'])}
     m = max(zs.values()); ex = {k: math.exp(v-m) for k, v in zs.items()}; s = sum(ex.values())
     return {k: round(v/s*100,1) for k, v in ex.items()}
 import datetime
 out = {'source': 'IBTrACS ACTIVE (NOAA NCEI), provisional agency rows', 'generated_utc': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M'), 'storms': []}
-for sid, g in df[df['BASIN']=='WP'].groupby('SID'):
+for sid, g in df[df['BASIN'].isin(('WP','EP','CP'))].groupby('SID'):
     g = g.sort_values('ISO_TIME').dropna(subset=['WIND','LAT','LON'])
     if len(g) < 9: continue
     g = g.reset_index(drop=True); r = g.iloc[-1]; t = r['ISO_TIME']
-    def at(hours, col):
+    def past(hours, col):   # named past(), not at(): at() is the path helper above
         j = g[g['ISO_TIME'] == t - pd.Timedelta(hours=hours)]
-        return float(j[col].iloc[0]) if len(j) else None
-    w6, w12, w24, p6, p24 = at(6,'WIND'), at(12,'WIND'), at(24,'WIND'), at(6,'PRES'), at(24,'PRES')
-    la6, lo6 = at(6,'LAT'), at(6,'LON')
+        return float(j[col].iloc[0]) if len(j) and pd.notna(j[col].iloc[0]) else None
+    w6, w12, w24, p6, p24 = past(6,'WIND'), past(12,'WIND'), past(24,'WIND'), past(6,'PRES'), past(24,'PRES')
+    la6, lo6 = past(6,'LAT'), past(6,'LON')
     if None in (w6,w12,w24,p6,p24,la6,lo6): continue
-    clat = math.floor((r['LAT']-5)/2.5)*2.5+6.25; clon = math.floor((r['LON']-110)/2.5)*2.5+111.25
-    key = f"{clat},{clon},{t.month}"  # centre key: track_climatology format
-    swkey = f"{clat-1.25:.1f},{clon-1.25:.1f},{t.month}"  # SW-corner key: region_defaults format
-    dd = D.get(swkey, {}); clim = T.get(key, {'dLat': 0.5, 'dLon': -1.0})
-    f = {'WIND': float(r['WIND']), 'PRES': float(r['PRES']), 'DWIND_24': float(r['WIND']-w24), 'DWIND_12': float(r['WIND']-w12),
-         'DWIND_6': float(r['WIND']-w6), 'DPRES_6': float(r['PRES']-p6), 'DPRES_24': float(r['PRES']-p24),
-         'LAT': float(r['LAT']), 'LON': float(r['LON']), 'DIST2LAND': float(r['DIST2LAND']) if pd.notna(r['DIST2LAND']) else 1000.0,
+    lat, lon = float(r['LAT']), float(r['LON'])
+    fit = fit_for(lat, lon)
+    key, swkey = cell_keys(lat, lon, t.month)
+    dd = fit['D'].get(swkey, {}); clim = fit['T'].get(key, {'dLat': 0.5, 'dLon': -1.0})
+    pres = float(r['PRES']) if pd.notna(r['PRES']) else dd.get('PRES', 1005.0)
+    f = {'WIND': float(r['WIND']), 'PRES': pres, 'DWIND_24': float(r['WIND']-w24), 'DWIND_12': float(r['WIND']-w12),
+         'DWIND_6': float(r['WIND']-w6), 'DPRES_6': pres-p6, 'DPRES_24': pres-p24,
+         'LAT': lat, 'LON': lon, 'LON_SIN': math.sin(math.radians(lon)), 'LON_COS': math.cos(math.radians(lon)),
+         'DIST2LAND': float(r['DIST2LAND']) if pd.notna(r['DIST2LAND']) else 1000.0,
          'MONTH': int(t.month), 'SPEED': float(r['STORM_SPEED']) if pd.notna(r['STORM_SPEED']) else 10.0, 'SST': dd.get('SST', 28.5)}
-    bdlat = 0.5*(4*(float(r['LAT'])-la6)) + 0.5*clim['dLat']; bdlon = 0.5*(4*(float(r['LON'])-lo6)) + 0.5*clim['dLon']
+    bdlat = 0.5*(4*(lat-la6)) + 0.5*clim['dLat']; bdlon = 0.5*(4*(lon-lo6)) + 0.5*clim['dLon']
     hist = [{'time_utc': row['ISO_TIME'].strftime('%Y-%m-%d %H:%M'), 'lat': float(row['LAT']), 'lon': float(row['LON']),
              'wind_kt': float(row['WIND']), 'pres_hpa': float(row['PRES']) if pd.notna(row['PRES']) else None}
             for _, row in g.iterrows() if pd.notna(row['LAT']) and pd.notna(row['WIND'])]
     out['storms'].append({'name': str(r['NAME']).title(), 'sid': sid, 'time_utc': t.strftime('%Y-%m-%d %H:%M'), 'history': hist,
-        'lat': float(r['LAT']), 'lon': float(r['LON']), 'wind_kt': float(r['WIND']), 'pres_hpa': float(r['PRES']),
-        'features': f, 'prediction': predict(f),
-        'track_24h': {'dLat': round(bdlat,2), 'dLon': round(bdlon,2), 'lat': round(float(r['LAT'])+bdlat,2), 'lon': round(float(r['LON'])+bdlon,2),
+        'lat': lat, 'lon': lon, 'wind_kt': float(r['WIND']), 'pres_hpa': float(r['PRES']) if pd.notna(r['PRES']) else None,
+        'features': f, 'prediction': predict(fit['W'], f),
+        'track_24h': {'dLat': round(bdlat,2), 'dLon': round(bdlon,2), 'lat': round(lat+bdlat,2), 'lon': round(lon+bdlon,2),
                       'method': 'blend of storm motion + typical path (test mean error 358 km)'}})
-json.dump(out, open(at('live_storms.json'),'w'), indent=1)
+# newest report first: the panel puts the storm that is still alive at the top
+out['storms'].sort(key=lambda s: s['time_utc'], reverse=True)
+json.dump(out, open(at('live_storms.json'),'w'), indent=1, allow_nan=False)
 print('storms:', [s['name'] for s in out['storms']])
 
 # --- wind_frames.json: whole-globe 10 m wind, 3-hourly frames -24 h..+48 h ---
@@ -73,17 +95,18 @@ try:
     # Open-Meteo only serves ~10 days of past hourly data; asking for older
     # frames made idx[w] raise KeyError, which skipped the whole wind update.
     back = max(back, now-timedelta(days=10))
-    want = []
+    back = back.replace(hour=(back.hour//6)*6, minute=0, second=0, microsecond=0)   # 6 h grid
+    # One sorted set of stamps: the 6-hourly replay back to the first storm
+    # history, then the 3-hourly window. A set because the two grids overlap at
+    # the join, and a duplicate timestamp is a dead step on the time bar.
+    want = set()
     tcur = back
     while tcur < cutoff:
-        want.append(tcur.strftime('%Y-%m-%dT%H:00')); tcur += timedelta(hours=6)
+        want.add(tcur.strftime('%Y-%m-%dT%H:00')); tcur += timedelta(hours=6)
     tcur = cutoff.replace(hour=(cutoff.hour//3)*3)
-    seen = set(want)
     while tcur <= now+timedelta(hours=48):
-        w = tcur.strftime('%Y-%m-%dT%H:00')
-        if w not in seen:   # the 3 h grid starts on a 6 h time when cutoff is off-grid
-            want.append(w); seen.add(w)
-        tcur += timedelta(hours=3)
+        want.add(tcur.strftime('%Y-%m-%dT%H:00')); tcur += timedelta(hours=3)
+    want = sorted(want)
     U = {w: [None]*len(pts) for w in want}; V = {w: [None]*len(pts) for w in want}
     # MSLP on every other point (5 deg): the cursor readout needs the smooth
     # field, not 2.5 deg detail, and a full-resolution array would add ~3 MB to
