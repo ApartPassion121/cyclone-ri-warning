@@ -75,11 +75,13 @@
 <div class="box" id="ctl">
   <div><span class="k">Layer</span><span class="lnk lay on" data-lay="ri">RI history</span> <span class="lnk lay" data-lay="sst">SST</span> <span class="lnk lay" data-lay="off">Off</span></div>
   <div><span class="k">Shape</span><span class="lnk shp on" data-shp="cells">Cells</span> <span class="lnk shp" data-shp="field">Field</span> <span class="lnk shp" data-shp="columns">Columns</span> <span class="lnk shp" data-shp="dots">Dots</span></div>
+  <div><span class="k">Wind</span><span class="lnk wnd on" data-w="on">Flow</span> <span class="lnk wnd" data-w="off">Off</span></div>
   <div><span class="k">Month</span><select id="month"></select></div>
   <div id="scalebar"></div>
   <div id="scalevals"><span id="sv1">0%</span><span id="sv2"></span><span id="sv3">8%+</span></div>
   <div class="hint">click the globe to select a cell · hover for history · orange = live storm</div>
-  <div style="color:#4d5f69">NOAA IBTrACS · NOAA OISST · ERA5 (Copernicus C3S) · not an official forecast</div>
+  <div id="windread" style="color:#4d5f69"></div>
+  <div style="color:#4d5f69">NOAA IBTrACS · NOAA OISST · ERA5 (Copernicus C3S) · wind Open-Meteo · not an official forecast</div>
 </div>
 
 <div class="box" id="panel">
@@ -155,7 +157,7 @@ const world = Globe()(document.getElementById('globe'))
   .polygonStrokeColor(()=> '#0e1a24')
   .polygonLabel(d=>d.properties.tip)
   // custom geometry: cells are drawn as our own sphere-hugging meshes (the polygon cap fill renders as shards)
-  .customThreeObject(d=>cellMesh(d))
+  .customThreeObject(d=> d.wind ? windObject() : cellMesh(d))
   .customThreeObjectUpdate(obj=>{ obj.position.set(0,0,0); })
   // heatmap geometry: smooth KDE surface field
   .heatmapPointLat('lat').heatmapPointLng('lng').heatmapPointWeight('w')
@@ -399,7 +401,9 @@ function redraw(){
   const pts=(shape==='columns'||shape==='dots') ? cs.map(dotOf) : [];
   const tp=trackPoint();
   world.pointsData(pts.concat(tp ? [markerPoint(), tp] : [markerPoint()], livePoints()));
-  world.customLayerData(shape==='cells' ? cs.map(c=>({lat:c.lat, lng:c.lng, color:washColor(c.t,0.2)})) : []);
+  const clData = shape==='cells' ? cs.map(c=>({lat:c.lat, lng:c.lng, color:washColor(c.t,0.2)})) : [];
+  if(windOn && WINDJ) clData.push(WIND_DATUM);
+  world.customLayerData(clData);
   world.polygonsData([]);
   world.heatmapsData(shape==='field' ? [cs.map(fieldOf)] : []);
   world.ringsData([{lat:sel.lat,lng:sel.lng,color:['rgba(255,198,138,0.8)','rgba(255,198,138,0)']}]
@@ -484,12 +488,76 @@ document.querySelectorAll('.shp').forEach(b=> b.onclick=()=>{
   document.querySelectorAll('.shp').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); shape=b.dataset.shp; redraw(); });
 
+/* ---------- wind flow (whole globe, Open-Meteo 10 m wind via wind.json) ---------- */
+let WINDJ=null, windOn=true;
+const WIND_DATUM={wind:true};
+const WIND_N=1400, WIND_K=0.38;  // visual speed: degrees per second per (m/s)
+let windGroup=null, windGeo=null, windParts=[], windRAF=null, windLast=0;
+function windSample(lat, lon){
+  const h=WINDJ.header;
+  const fx=(((lon%360)+360)%360)/h.dx;
+  let fy=(h.la1-lat)/h.dy; fy=Math.max(0, Math.min(h.ny-1.001, fy));
+  const x0=Math.floor(fx)%h.nx, x1=(x0+1)%h.nx, y0=Math.floor(fy), y1=Math.min(y0+1, h.ny-1);
+  const tx=fx-Math.floor(fx), ty=fy-y0, idx=(x,y)=>y*h.nx+x, L=(a,b,t)=>a+(b-a)*t;
+  return [L(L(WINDJ.u[idx(x0,y0)],WINDJ.u[idx(x1,y0)],tx), L(WINDJ.u[idx(x0,y1)],WINDJ.u[idx(x1,y1)],tx), ty),
+          L(L(WINDJ.v[idx(x0,y0)],WINDJ.v[idx(x1,y0)],tx), L(WINDJ.v[idx(x0,y1)],WINDJ.v[idx(x1,y1)],tx), ty)];
+}
+function windSpawn(p){
+  p.lat=Math.asin(2*Math.random()-1)*180/Math.PI;
+  p.lon=Math.random()*360-180;
+  p.age=0; p.max=2+Math.random()*3;
+  const c=world.getCoords(p.lat, p.lon, 0.006); p.x=c.x; p.y=c.y; p.z=c.z;
+}
+function windObject(){
+  if(windGroup) return windGroup;
+  windParts=[]; for(let i=0;i<WIND_N;i++){ const p={}; windSpawn(p); p.age=Math.random()*p.max; windParts.push(p); }
+  windGeo=new THREE.BufferGeometry();
+  windGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(WIND_N*6), 3));
+  windGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(WIND_N*6), 3));
+  const lines=new THREE.LineSegments(windGeo, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.8, blending:THREE.AdditiveBlending, depthWrite:false}));
+  lines.raycast=()=>{};
+  windGroup=new THREE.Group(); windGroup.add(lines);
+  return windGroup;
+}
+function windStep(ts){
+  if(!windOn || !WINDJ){ windRAF=null; return; }
+  const dt=Math.min(0.05, windLast ? (ts-windLast)/1000 : 0.016); windLast=ts;
+  const pos=windGeo.attributes.position.array, col=windGeo.attributes.color.array;
+  for(let i=0;i<WIND_N;i++){
+    const p=windParts[i];
+    const px=p.x, py=p.y, pz=p.z;
+    const [u,v]=windSample(p.lat, p.lon);
+    const sp=Math.hypot(u,v);
+    p.lat+=v*WIND_K*dt;
+    p.lon+=u*WIND_K*dt/Math.max(0.25, Math.cos(p.lat*Math.PI/180));
+    p.age+=dt;
+    if(p.age>p.max || Math.abs(p.lat)>88 || sp<0.3){ windSpawn(p); }
+    else { const c=world.getCoords(p.lat, p.lon, 0.006); p.x=c.x; p.y=c.y; p.z=c.z; }
+    const o=i*6, fade=Math.min(1, sp/9);
+    pos[o]=px; pos[o+1]=py; pos[o+2]=pz; pos[o+3]=p.x; pos[o+4]=p.y; pos[o+5]=p.z;
+    col[o]=0; col[o+1]=0; col[o+2]=0;
+    col[o+3]=0.62*fade; col[o+4]=0.78*fade; col[o+5]=fade;
+  }
+  windGeo.attributes.position.needsUpdate=true;
+  windGeo.attributes.color.needsUpdate=true;
+  windRAF=requestAnimationFrame(windStep);
+}
+function windKick(){
+  document.getElementById('windread').textContent =
+    (windOn && WINDJ) ? `wind flow · Open-Meteo 10 m · ${WINDJ.header.refTime} UTC` : '';
+  if(windOn && WINDJ && !windRAF){ windLast=0; windRAF=requestAnimationFrame(windStep); }
+}
+document.querySelectorAll('.wnd').forEach(b=> b.onclick=()=>{
+  document.querySelectorAll('.wnd').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); windOn = b.dataset.w==='on'; windKick(); redraw(); });
+
 loadCoastlines();
 Promise.all([fetch('model_weights.json').then(r=>r.json()), fetch('region_stats.json').then(r=>r.json()), fetch('region_defaults.json').then(r=>r.json()),
   fetch('era5_env.json').then(r=>r.json()).catch(()=>null),
   fetch('track_climatology.json').then(r=>r.json()).catch(()=>null),
-  fetch('live_storms.json').then(r=>r.json()).catch(()=>null)])
- .then(([w,s,d,e2,t2,l2])=>{ W=w; STATS=s; DEFS=d; ENV=e2; TRACK=t2; LIVE=l2; renderLive(); applyCell(); redraw(); })
+  fetch('live_storms.json').then(r=>r.json()).catch(()=>null),
+  fetch('wind.json').then(r=>r.json()).catch(()=>null)])
+ .then(([w,s,d,e2,t2,l2,w2])=>{ W=w; STATS=s; DEFS=d; ENV=e2; TRACK=t2; LIVE=l2; WINDJ=w2; renderLive(); applyCell(); redraw(); windKick(); })
  .catch(e=>{ document.getElementById('locread').textContent='JSON files missing — they must sit next to index.html.'; });
 </script>
 </body>
