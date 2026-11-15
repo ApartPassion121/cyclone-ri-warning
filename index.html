@@ -59,6 +59,8 @@
   #conds .hd { color:#8fa3ad; letter-spacing:.09em; font-size:10px; margin-bottom:3px; }
   #conds .ok { color:#7fb069; } #conds .bad { color:#e08a4c; } #conds .na { color:#4d5f69; }
   #conds .note { color:#4d5f69; line-height:1.45; margin-top:4px; font-size:10px; }
+  #track { margin-top:6px; color:#8fa3ad; line-height:1.5; display:none; }
+  #track .k2 { color:#697d87; }
   #open { position:fixed; right:12px; top:12px; display:none; color:#9db0ba; background:rgba(3,6,8,.78); padding:5px 9px; cursor:pointer; letter-spacing:.1em; }
   #open:hover { color:#fff; }
   #timebar { left:50%; transform:translateX(-50%); bottom:12px; padding:6px 10px; display:none; align-items:center; gap:9px; white-space:nowrap; }
@@ -126,6 +128,7 @@
     </div>
     <div id="verdict"></div>
     <div id="conds"></div>
+    <div id="track"></div>
   </div>
 </div>
 <div id="open">STORM</div>
@@ -419,10 +422,22 @@ function trackPaths(){
 }
 function trackPoint(){
   if(liveTrack) return {lat:liveTrack.lat, lng:liveTrack.lng, color:'#ffb35c', r:0.3, alt:0.012,
-    tip:'forecast position 24 h later (blend method)'};
+    tip:'24 h position · blend of storm motion + climatology · mean error 358 km'};
   const e=trackEnd(); if(!e) return null;
   return {lat:e.lat, lng:e.lng, color:'#8fd0ff', r:0.3, alt:0.012,
-    tip:`typical position 24 h later · based on ${e.t.n} past storm points`};
+    tip:`24 h position · climatology from ${e.t.n} past storms · mean error 371 km`};
+}
+/* The README promises the track's measured error is shown next to the forecast,
+   not hidden: blend = 358 km, climatology = 371 km mean error on the 2021-25 test years. */
+const TRACK_ERR={blend:358, clim:371};
+function trackInfo(){
+  const box=document.getElementById('track'); if(!box) return;
+  const e=liveTrack || trackEnd();
+  if(!e){ box.style.display='none'; return; }
+  box.style.display='block';
+  box.innerHTML = liveTrack
+    ? `<span class="k2">24 h track</span> ${e.lat.toFixed(1)}N ${e.lng.toFixed(1)}E <span class="k2">· storm motion + climatology · mean error ${TRACK_ERR.blend} km</span>`
+    : `<span class="k2">24 h track</span> ${e.lat.toFixed(1)}N ${e.lng.toFixed(1)}E <span class="k2">· climatology, ${e.t.n} past storms · mean error ${TRACK_ERR.clim} km</span>`;
 }
 
 /* ---------- selection marker ---------- */
@@ -473,6 +488,7 @@ function updateLiveLayers(){
   world.ringsData([{lat:sel.lat,lng:sel.lng,color:['rgba(255,198,138,0.8)','rgba(255,198,138,0)']}]
     .concat((LIVE&&LIVE.storms?LIVE.storms:[]).map(st=>{ const ep=effPos(st); return {lat:ep.lat,lng:ep.lon,color:['rgba(255,120,71,0.85)','rgba(255,120,71,0)']}; })));
   world.labelsData([{lat:sel.lat,lng:sel.lng,label:selLabel()}].concat(liveLabels()));
+  trackInfo();
 }
 function setScale(){
   const[a,c]= layer==='sst' ? ['19C','31C'] : ['0%','8%+'];
@@ -498,8 +514,25 @@ function pick(lat,lng){
   const p=world.pointOfView();
   world.pointOfView({lat, lng, altitude:Math.min(p.altitude,1.5)}, 900);
 }
+let DEFS_IDX=null;
+/* Several out-of-season cell+month combinations have no storms, so they have no
+   monthly row. Fall back to that cell's nearest month instead of a global
+   constant, so the prefill stays typical *for the location*. */
+function defsFor(cell, m){
+  if(!DEFS) return null;
+  const exact=DEFS[cell+','+m];
+  if(exact) return exact;
+  if(!DEFS_IDX){
+    DEFS_IDX={};
+    for(const k of Object.keys(DEFS)){ const p=k.split(','); const c=p[0]+','+p[1]; (DEFS_IDX[c]=DEFS_IDX[c]||[]).push(+p[2]); }
+  }
+  const ms=DEFS_IDX[cell]; if(!ms || !ms.length) return null;
+  let best=null, bd=99;
+  for(const mm of ms){ const dd=Math.abs(mm-m); const d=Math.min(dd, 12-dd); if(d<bd){ bd=d; best=mm; } }
+  return DEFS[cell+','+best] || null;
+}
 function applyCell(){
-  const s=STATS && STATS[sel.cell], d=DEFS && DEFS[sel.cell+','+month];
+  const s=STATS && STATS[sel.cell], d=defsFor(sel.cell, month);
   document.getElementById('locread').innerHTML = s
     ? `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · ${s.storms} storm${s.storms===1?'':'s'} since 2000 · RI ${s.ri_pct}% · weak ${s.weaken_pct}%`
     : `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · no storms recorded in this cell`;
@@ -693,7 +726,7 @@ Promise.all([fetch('model_weights.json').then(r=>r.json()), fetch('region_stats.
   fetch('live_storms.json').then(r=>r.json()).catch(()=>null),
   fetch('era5_env.json').then(r=>r.json()).catch(()=>null)])
  .then(([w,s,d,t2,l2,e2])=>{ W=w; STATS=s; DEFS=d; TRACK=t2; LIVE=l2; ENV=e2;
-   PTS_CACHE=null; PTS_KEY='';   // data arrived after any early empty build
+   PTS_CACHE=null; PTS_KEY=''; DEFS_IDX=null;   // data arrived after any early empty build
    renderLive(); applyCell(); redraw(); windKick(); })
  .catch(e=>{ document.getElementById('locread').textContent='JSON files missing — they must sit next to index.html.'; });
 fetch('wind_frames.json').then(r=>r.json()).then(w2=>{
