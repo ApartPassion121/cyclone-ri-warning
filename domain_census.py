@@ -3,13 +3,13 @@
 
 Answers, before any retraining: how many storms, records, RI points and
 storm-days each candidate domain brings, and how different their RI base rates
-are. Run it on Kaggle against the archive the notebook already downloads:
+are. Point it at an IBTrACS CSV (the since1980 export is enough):
 
     python3 domain_census.py --csv /kaggle/input/.../ibtracs.since1980.list.v04r01.csv
 
 Writes nothing; prints tables. Needs pandas only.
 
-Conventions match the notebook and the site: TRACK_TYPE 'main', extratropical
+Conventions match the shipped model and the site: TRACK_TYPE 'main', extratropical
 (NATURE 'ET') rows dropped, wind unified WMO > TOKYO > USA, RI = +30 kt in
 exactly 24 h, WEAK = -30 kt, longitude normalised to -180..180 so the dateline
 is not a special case.
