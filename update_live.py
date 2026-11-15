@@ -36,7 +36,10 @@ for sid, g in df[df['BASIN']=='WP'].groupby('SID'):
          'LAT': float(r['LAT']), 'LON': float(r['LON']), 'DIST2LAND': float(r['DIST2LAND']) if pd.notna(r['DIST2LAND']) else 1000.0,
          'MONTH': int(t.month), 'SPEED': float(r['STORM_SPEED']) if pd.notna(r['STORM_SPEED']) else 10.0, 'SST': dd.get('SST', 28.5)}
     bdlat = 0.5*(4*(float(r['LAT'])-la6)) + 0.5*clim['dLat']; bdlon = 0.5*(4*(float(r['LON'])-lo6)) + 0.5*clim['dLon']
-    out['storms'].append({'name': str(r['NAME']).title(), 'sid': sid, 'time_utc': t.strftime('%Y-%m-%d %H:%M'),
+    hist = [{'time_utc': row['ISO_TIME'].strftime('%Y-%m-%d %H:%M'), 'lat': float(row['LAT']), 'lon': float(row['LON']),
+             'wind_kt': float(row['WIND']), 'pres_hpa': float(row['PRES']) if pd.notna(row['PRES']) else None}
+            for _, row in g.iterrows() if pd.notna(row['LAT']) and pd.notna(row['WIND'])]
+    out['storms'].append({'name': str(r['NAME']).title(), 'sid': sid, 'time_utc': t.strftime('%Y-%m-%d %H:%M'), 'history': hist,
         'lat': float(r['LAT']), 'lon': float(r['LON']), 'wind_kt': float(r['WIND']), 'pres_hpa': float(r['PRES']),
         'features': f, 'prediction': predict(f),
         'track_24h': {'dLat': round(bdlat,2), 'dLon': round(bdlon,2), 'lat': round(float(r['LAT'])+bdlat,2), 'lon': round(float(r['LON'])+bdlon,2),
@@ -44,35 +47,55 @@ for sid, g in df[df['BASIN']=='WP'].groupby('SID'):
 json.dump(out, open('live_storms.json','w'), indent=1)
 print('storms:', [s['name'] for s in out['storms']])
 
-# --- wind.json: whole-globe 10 m wind snapshot from Open-Meteo (free, no key) ---
-# Baked into a static file so the page itself makes no API calls. A failure here
-# must never block the storms update, hence the try/except.
+# --- wind_frames.json: whole-globe 10 m wind, 3-hourly frames -24 h..+48 h ---
+# Open-Meteo hourly (free, no key), baked into a static file so the page itself
+# makes no API calls. A failure here must never block the storms update.
 import time
+from datetime import datetime, timedelta, timezone
 try:
     STEP = 2.5
     lats = [87.5-STEP*i for i in range(71)]
     lons = [STEP*i for i in range(144)]
     pts = [(la, lo) for la in lats for lo in lons]
-    U = [None]*len(pts); V = [None]*len(pts); reftime = None
+    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    # 6-hourly frames back to the earliest storm history (so finished storms can
+    # be replayed on the time bar), then 3-hourly for the last day + 48 h forecast.
+    cutoff = now-timedelta(hours=24)
+    back = cutoff
+    for st_ in out['storms']:
+        if st_.get('history'):
+            h0 = datetime.strptime(st_['history'][0]['time_utc'], '%Y-%m-%d %H:%M').replace(tzinfo=timezone.utc)
+            back = min(back, h0.replace(hour=(h0.hour//6)*6))
+    want = []
+    tcur = back
+    while tcur < cutoff:
+        want.append(tcur.strftime('%Y-%m-%dT%H:00')); tcur += timedelta(hours=6)
+    tcur = cutoff.replace(hour=(cutoff.hour//3)*3)
+    while tcur <= now+timedelta(hours=48):
+        want.append(tcur.strftime('%Y-%m-%dT%H:00')); tcur += timedelta(hours=3)
+    U = {w: [None]*len(pts) for w in want}; V = {w: [None]*len(pts) for w in want}
     for st in range(0, len(pts), 40):
         chunk = pts[st:st+40]
         la = ','.join(str(q[0]) for q in chunk)
         lo = ','.join(str(q[1]-360 if q[1] > 180 else q[1]) for q in chunk)
         url = (f"https://api.open-meteo.com/v1/forecast?latitude={la}&longitude={lo}"
-               "&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms")
+               "&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&past_days=10&forecast_days=4")
         req = urllib.request.Request(url, headers={'User-Agent': 'cyclone-ri-warning/1.0'})
-        res = json.load(urllib.request.urlopen(req, timeout=120))
+        res = json.load(urllib.request.urlopen(req, timeout=180))
         if isinstance(res, dict): res = [res]
         for k, loc in enumerate(res):
-            cur = loc['current']; spd = cur['wind_speed_10m']; dr = math.radians(cur['wind_direction_10m'])
-            if reftime is None: reftime = cur['time']
-            U[st+k] = round(-spd*math.sin(dr), 2); V[st+k] = round(-spd*math.cos(dr), 2)
+            idx = {t: ii for ii, t in enumerate(loc['hourly']['time'])}
+            spd = loc['hourly']['wind_speed_10m']; dr = loc['hourly']['wind_direction_10m']
+            for w in want:
+                ii = idx[w]; rad = math.radians(dr[ii])
+                U[w][st+k] = round(-spd[ii]*math.sin(rad), 1); V[w][st+k] = round(-spd[ii]*math.cos(rad), 1)
         time.sleep(0.3)
-    assert all(x is not None for x in U)
-    wind = {'header': {'nx': 144, 'ny': 71, 'lo1': 0, 'la1': 87.5, 'dx': STEP, 'dy': STEP,
-                       'refTime': reftime, 'source': 'Open-Meteo current 10 m wind (GFS/ICON blend)'},
-            'u': U, 'v': V}
-    json.dump(wind, open('wind.json', 'w'), separators=(',', ':'))
-    print('wind.json written, refTime', reftime)
+    frames = [{'time': w, 'u': U[w], 'v': V[w]} for w in want]
+    assert all(x is not None for f in frames for x in f['u'])
+    wf = {'header': {'nx': 144, 'ny': 71, 'lo1': 0, 'la1': 87.5, 'dx': STEP, 'dy': STEP,
+                     'source': 'Open-Meteo hourly 10 m wind (GFS/ICON blend), 3-hourly frames'},
+          'frames': frames}
+    json.dump(wf, open('wind_frames.json', 'w'), separators=(',', ':'))
+    print('wind_frames.json written:', len(frames), 'frames')
 except Exception as e:
     print('wind update skipped:', e)
