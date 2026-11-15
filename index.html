@@ -200,9 +200,11 @@ const world = Globe()(document.getElementById('globe'))
    coordinates from the click itself; drags (globe rotation) are ignored. */
 let downPos=null;
 const globeEl=document.getElementById('globe');
-globeEl.addEventListener('mousedown', e=>{ downPos=[e.clientX, e.clientY]; });
-globeEl.addEventListener('click', e=>{
-  if(downPos && Math.hypot(e.clientX-downPos[0], e.clientY-downPos[1])>5) return;
+globeEl.addEventListener('pointerdown', e=>{ downPos=[e.clientX, e.clientY]; });
+globeEl.addEventListener('pointerup', e=>{
+  if(!downPos) return;
+  const moved=Math.hypot(e.clientX-downPos[0], e.clientY-downPos[1]); downPos=null;
+  if(moved>10) return;   // it was a drag (globe rotation), not a tap
   const r=globeEl.getBoundingClientRect();
   const c=world.toGlobeCoords(e.clientX-r.left, e.clientY-r.top);
   if(c) pick(c.lat, c.lng);
@@ -350,7 +352,7 @@ function livePoints(){
 }
 function liveLabels(){
   if(!LIVE || !LIVE.storms) return [];
-  return LIVE.storms.map(st=>{ const ep=effPos(st); return {lat:ep.lat, lng:ep.lon, label:'● '+st.name.toUpperCase()}; });
+  return LIVE.storms.map(st=>{ const ep=effPos(st); return {lat:ep.lat, lng:ep.lon, label:st.name.toUpperCase()}; });
 }
 function renderLive(){
   const box=document.getElementById('live');
@@ -538,8 +540,11 @@ function setPlaying(on){
   }
 }
 document.getElementById('tplay').onclick=()=> setPlaying(!playTimer);
-document.getElementById('tprev').onclick=()=>{ setPlaying(false); setTime(tIdx-1); };
-document.getElementById('tnext').onclick=()=>{ setPlaying(false); setTime(tIdx+1); };
+function stepHours(h){ if(!WINDJ) return; const target=frameMs(tIdx)+h*3600e3;
+  let best=tIdx, bd=1e18; WINDJ.frames.forEach((f,i)=>{ const dd=Math.abs(frameMs(i)-target); if(dd<bd){bd=dd;best=i;} });
+  setTime(best); }
+document.getElementById('tprev').onclick=()=>{ setPlaying(false); stepHours(-3); };
+document.getElementById('tnext').onclick=()=>{ setPlaying(false); stepHours(3); };
 document.getElementById('tnow').onclick=()=>{ if(!WINDJ) return;
   let best=0, bd=1e18; WINDJ.frames.forEach((f,i)=>{ const d=Math.abs(frameMs(i)-Date.now()); if(d<bd){bd=d;best=i;} });
   setTime(best); };
@@ -547,7 +552,7 @@ document.getElementById('tnow').onclick=()=>{ if(!WINDJ) return;
 /* ---------- wind flow (whole globe, Open-Meteo 10 m wind via wind_frames.json) ---------- */
 let WINDJ=null, windOn=true;
 const WIND_DATUM={wind:true};
-const WIND_N=(window.innerWidth<760 || (navigator.hardwareConcurrency||8)<=4) ? 2500 : 6000, WIND_K=0.5;  // fewer particles on small/low-power screens; visual speed: degrees per second per (m/s)
+const WIND_N=(window.innerWidth<760 || (navigator.hardwareConcurrency||8)<=4) ? 4000 : 10000, WIND_K=0.5;  // fewer particles on small/low-power screens; visual speed: degrees per second per (m/s)
 let windGroup=null, windGeo=null, windParts=[], windRAF=null, windLast=0;
 function windSample(lat, lon){
   const h=WINDJ.header, F=WINDJ.frames[tIdx];
@@ -558,7 +563,7 @@ function windSample(lat, lon){
   return [L(L(F.u[idx(x0,y0)],F.u[idx(x1,y0)],tx), L(F.u[idx(x0,y1)],F.u[idx(x1,y1)],tx), ty),
           L(L(F.v[idx(x0,y0)],F.v[idx(x1,y0)],tx), L(F.v[idx(x0,y1)],F.v[idx(x1,y1)],tx), ty)];
 }
-const TRAIL=7;
+const TRAIL=9;
 function windSpawn(p){
   p.lat=Math.asin(2*Math.random()-1)*180/Math.PI;
   p.lon=Math.random()*360-180;
@@ -599,8 +604,8 @@ function windStep(ts){
     const fade=0.30+0.70*Math.min(1, sp/10);
     for(let j=0;j<TRAIL-1;j++){
       const [bu,bv]=windSample(tla, tlo);
-      tla-=bv*WIND_K*0.05;
-      tlo-=bu*WIND_K*0.05/Math.max(0.25, Math.cos(tla*Math.PI/180));
+      tla-=bv*WIND_K*0.06;
+      tlo-=bu*WIND_K*0.06/Math.max(0.25, Math.cos(tla*Math.PI/180));
       const cur=world.getCoords(tla, tlo, 0.006);
       const g=(1-j/(TRAIL-1))*fade;
       pos[o]=cur.x; pos[o+1]=cur.y; pos[o+2]=cur.z; pos[o+3]=prev.x; pos[o+4]=prev.y; pos[o+5]=prev.z;
