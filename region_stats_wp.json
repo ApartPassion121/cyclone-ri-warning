@@ -3,2184 +3,2548 @@
   "points": 3,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,117.5": {
   "points": 5,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,120.0": {
   "points": 4,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,122.5": {
   "points": 4,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.25
  },
  "5.0,125.0": {
   "points": 2,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.5
  },
  "5.0,127.5": {
   "points": 36,
   "storms": 10,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,130.0": {
   "points": 65,
   "storms": 14,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,132.5": {
   "points": 60,
   "storms": 16,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,135.0": {
   "points": 54,
   "storms": 16,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,137.5": {
   "points": 75,
   "storms": 18,
   "ri_pct": 0.0,
-  "weaken_pct": 1.3
+  "weaken_pct": 1.3,
+  "land": 0.0
  },
  "5.0,140.0": {
   "points": 50,
   "storms": 13,
   "ri_pct": 0.0,
-  "weaken_pct": 8.0
+  "weaken_pct": 8.0,
+  "land": 0.0
  },
  "5.0,142.5": {
   "points": 33,
   "storms": 11,
   "ri_pct": 0.0,
-  "weaken_pct": 9.1
+  "weaken_pct": 9.1,
+  "land": 0.0
  },
  "5.0,145.0": {
   "points": 21,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 14.3
+  "weaken_pct": 14.3,
+  "land": 0.0
  },
  "5.0,147.5": {
   "points": 29,
   "storms": 10,
   "ri_pct": 0.0,
-  "weaken_pct": 3.4
+  "weaken_pct": 3.4,
+  "land": 0.0
  },
  "5.0,150.0": {
   "points": 31,
   "storms": 7,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,152.5": {
   "points": 29,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,155.0": {
   "points": 32,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,157.5": {
   "points": 14,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,160.0": {
   "points": 42,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,162.5": {
   "points": 6,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,165.0": {
   "points": 1,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "5.0,175.0": {
   "points": 4,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,110.0": {
   "points": 28,
   "storms": 7,
   "ri_pct": 0.0,
-  "weaken_pct": 3.6
+  "weaken_pct": 3.6,
+  "land": 0.0
  },
  "7.5,112.5": {
   "points": 73,
   "storms": 10,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,115.0": {
   "points": 43,
   "storms": 11,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,117.5": {
   "points": 41,
   "storms": 12,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.05
  },
  "7.5,120.0": {
   "points": 55,
   "storms": 16,
   "ri_pct": 5.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.04
  },
  "7.5,122.5": {
   "points": 42,
   "storms": 15,
   "ri_pct": 7.1,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.4
  },
  "7.5,125.0": {
   "points": 81,
   "storms": 24,
   "ri_pct": 0.0,
-  "weaken_pct": 1.2
+  "weaken_pct": 1.2,
+  "land": 0.26
  },
  "7.5,127.5": {
   "points": 126,
   "storms": 31,
   "ri_pct": 0.0,
-  "weaken_pct": 2.4
+  "weaken_pct": 2.4,
+  "land": 0.0
  },
  "7.5,130.0": {
   "points": 114,
   "storms": 28,
   "ri_pct": 0.0,
-  "weaken_pct": 3.5
+  "weaken_pct": 3.5,
+  "land": 0.0
  },
  "7.5,132.5": {
   "points": 73,
   "storms": 21,
   "ri_pct": 0.0,
-  "weaken_pct": 9.6
+  "weaken_pct": 9.6,
+  "land": 0.0
  },
  "7.5,135.0": {
   "points": 115,
   "storms": 25,
   "ri_pct": 0.0,
-  "weaken_pct": 5.2
+  "weaken_pct": 5.2,
+  "land": 0.0
  },
  "7.5,137.5": {
   "points": 114,
   "storms": 29,
   "ri_pct": 0.0,
-  "weaken_pct": 5.3
+  "weaken_pct": 5.3,
+  "land": 0.0
  },
  "7.5,140.0": {
   "points": 84,
   "storms": 22,
   "ri_pct": 0.0,
-  "weaken_pct": 3.6
+  "weaken_pct": 3.6,
+  "land": 0.0
  },
  "7.5,142.5": {
   "points": 85,
   "storms": 24,
   "ri_pct": 0.0,
-  "weaken_pct": 3.5
+  "weaken_pct": 3.5,
+  "land": 0.0
  },
  "7.5,145.0": {
   "points": 99,
   "storms": 24,
   "ri_pct": 0.0,
-  "weaken_pct": 4.0
+  "weaken_pct": 4.0,
+  "land": 0.0
  },
  "7.5,147.5": {
   "points": 113,
   "storms": 26,
   "ri_pct": 0.0,
-  "weaken_pct": 4.4
+  "weaken_pct": 4.4,
+  "land": 0.0
  },
  "7.5,150.0": {
   "points": 64,
   "storms": 14,
   "ri_pct": 0.0,
-  "weaken_pct": 3.1
+  "weaken_pct": 3.1,
+  "land": 0.0
  },
  "7.5,152.5": {
   "points": 49,
   "storms": 12,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,155.0": {
   "points": 66,
   "storms": 18,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,157.5": {
   "points": 57,
   "storms": 14,
   "ri_pct": 0.0,
-  "weaken_pct": 1.8
+  "weaken_pct": 1.8,
+  "land": 0.0
  },
  "7.5,160.0": {
   "points": 38,
   "storms": 10,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,162.5": {
   "points": 21,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,165.0": {
   "points": 7,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,167.5": {
   "points": 7,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,170.0": {
   "points": 8,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,172.5": {
   "points": 7,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "7.5,175.0": {
   "points": 2,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "10.0,110.0": {
   "points": 66,
   "storms": 9,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "10.0,112.5": {
   "points": 96,
   "storms": 22,
   "ri_pct": 0.0,
-  "weaken_pct": 2.1
+  "weaken_pct": 2.1,
+  "land": 0.0
  },
  "10.0,115.0": {
   "points": 97,
   "storms": 29,
   "ri_pct": 1.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "10.0,117.5": {
   "points": 91,
   "storms": 27,
   "ri_pct": 6.6,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.07
  },
  "10.0,120.0": {
   "points": 106,
   "storms": 32,
   "ri_pct": 4.7,
-  "weaken_pct": 0.9
+  "weaken_pct": 0.9,
+  "land": 0.07
  },
  "10.0,122.5": {
   "points": 141,
   "storms": 38,
   "ri_pct": 1.4,
-  "weaken_pct": 2.8
+  "weaken_pct": 2.8,
+  "land": 0.45
  },
  "10.0,125.0": {
   "points": 226,
   "storms": 57,
   "ri_pct": 0.0,
-  "weaken_pct": 10.6
+  "weaken_pct": 10.6,
+  "land": 0.13
  },
  "10.0,127.5": {
   "points": 202,
   "storms": 45,
   "ri_pct": 0.0,
-  "weaken_pct": 11.9
+  "weaken_pct": 11.9,
+  "land": 0.0
  },
  "10.0,130.0": {
   "points": 166,
   "storms": 41,
   "ri_pct": 0.0,
-  "weaken_pct": 10.8
+  "weaken_pct": 10.8,
+  "land": 0.0
  },
  "10.0,132.5": {
   "points": 172,
   "storms": 40,
   "ri_pct": 0.0,
-  "weaken_pct": 4.1
+  "weaken_pct": 4.1,
+  "land": 0.0
  },
  "10.0,135.0": {
   "points": 166,
   "storms": 44,
   "ri_pct": 0.0,
-  "weaken_pct": 4.2
+  "weaken_pct": 4.2,
+  "land": 0.0
  },
  "10.0,137.5": {
   "points": 113,
   "storms": 38,
   "ri_pct": 0.0,
-  "weaken_pct": 7.1
+  "weaken_pct": 7.1,
+  "land": 0.0
  },
  "10.0,140.0": {
   "points": 116,
   "storms": 35,
   "ri_pct": 0.0,
-  "weaken_pct": 5.2
+  "weaken_pct": 5.2,
+  "land": 0.0
  },
  "10.0,142.5": {
   "points": 102,
   "storms": 29,
   "ri_pct": 0.0,
-  "weaken_pct": 21.6
+  "weaken_pct": 21.6,
+  "land": 0.0
  },
  "10.0,145.0": {
   "points": 89,
   "storms": 27,
   "ri_pct": 0.0,
-  "weaken_pct": 14.6
+  "weaken_pct": 14.6,
+  "land": 0.0
  },
  "10.0,147.5": {
   "points": 90,
   "storms": 23,
   "ri_pct": 0.0,
-  "weaken_pct": 4.4
+  "weaken_pct": 4.4,
+  "land": 0.0
  },
  "10.0,150.0": {
   "points": 98,
   "storms": 19,
   "ri_pct": 0.0,
-  "weaken_pct": 6.1
+  "weaken_pct": 6.1,
+  "land": 0.0
  },
  "10.0,152.5": {
   "points": 66,
   "storms": 18,
   "ri_pct": 0.0,
-  "weaken_pct": 6.1
+  "weaken_pct": 6.1,
+  "land": 0.0
  },
  "10.0,155.0": {
   "points": 66,
   "storms": 18,
   "ri_pct": 0.0,
-  "weaken_pct": 7.6
+  "weaken_pct": 7.6,
+  "land": 0.0
  },
  "10.0,157.5": {
   "points": 47,
   "storms": 11,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "10.0,160.0": {
   "points": 23,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 4.3
+  "weaken_pct": 4.3,
+  "land": 0.0
  },
  "10.0,162.5": {
   "points": 20,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "10.0,165.0": {
   "points": 27,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "10.0,167.5": {
   "points": 6,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "10.0,170.0": {
   "points": 1,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "10.0,172.5": {
   "points": 1,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "10.0,175.0": {
   "points": 10,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "12.5,110.0": {
   "points": 61,
   "storms": 10,
   "ri_pct": 1.6,
-  "weaken_pct": 8.2
+  "weaken_pct": 8.2,
+  "land": 0.0
  },
  "12.5,112.5": {
   "points": 154,
   "storms": 31,
   "ri_pct": 0.0,
-  "weaken_pct": 1.3
+  "weaken_pct": 1.3,
+  "land": 0.0
  },
  "12.5,115.0": {
   "points": 208,
   "storms": 39,
   "ri_pct": 2.9,
-  "weaken_pct": 2.9
+  "weaken_pct": 2.9,
+  "land": 0.0
  },
  "12.5,117.5": {
   "points": 159,
   "storms": 44,
   "ri_pct": 11.3,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "12.5,120.0": {
   "points": 164,
   "storms": 39,
   "ri_pct": 11.0,
-  "weaken_pct": 3.0
+  "weaken_pct": 3.0,
+  "land": 0.46
  },
  "12.5,122.5": {
   "points": 195,
   "storms": 47,
   "ri_pct": 2.6,
-  "weaken_pct": 9.7
+  "weaken_pct": 9.7,
+  "land": 0.19
  },
  "12.5,125.0": {
   "points": 236,
   "storms": 59,
   "ri_pct": 1.7,
-  "weaken_pct": 14.8
+  "weaken_pct": 14.8,
+  "land": 0.01
  },
  "12.5,127.5": {
   "points": 242,
   "storms": 55,
   "ri_pct": 0.0,
-  "weaken_pct": 16.9
+  "weaken_pct": 16.9,
+  "land": 0.0
  },
  "12.5,130.0": {
   "points": 279,
   "storms": 62,
   "ri_pct": 0.0,
-  "weaken_pct": 10.8
+  "weaken_pct": 10.8,
+  "land": 0.0
  },
  "12.5,132.5": {
   "points": 203,
   "storms": 51,
   "ri_pct": 0.0,
-  "weaken_pct": 4.9
+  "weaken_pct": 4.9,
+  "land": 0.0
  },
  "12.5,135.0": {
   "points": 235,
   "storms": 56,
   "ri_pct": 0.0,
-  "weaken_pct": 7.7
+  "weaken_pct": 7.7,
+  "land": 0.0
  },
  "12.5,137.5": {
   "points": 176,
   "storms": 45,
   "ri_pct": 0.0,
-  "weaken_pct": 6.2
+  "weaken_pct": 6.2,
+  "land": 0.0
  },
  "12.5,140.0": {
   "points": 133,
   "storms": 38,
   "ri_pct": 0.0,
-  "weaken_pct": 12.8
+  "weaken_pct": 12.8,
+  "land": 0.0
  },
  "12.5,142.5": {
   "points": 122,
   "storms": 34,
   "ri_pct": 0.0,
-  "weaken_pct": 5.7
+  "weaken_pct": 5.7,
+  "land": 0.0
  },
  "12.5,145.0": {
   "points": 126,
   "storms": 35,
   "ri_pct": 0.0,
-  "weaken_pct": 7.9
+  "weaken_pct": 7.9,
+  "land": 0.0
  },
  "12.5,147.5": {
   "points": 107,
   "storms": 31,
   "ri_pct": 0.9,
-  "weaken_pct": 8.4
+  "weaken_pct": 8.4,
+  "land": 0.0
  },
  "12.5,150.0": {
   "points": 83,
   "storms": 21,
   "ri_pct": 0.0,
-  "weaken_pct": 10.8
+  "weaken_pct": 10.8,
+  "land": 0.0
  },
  "12.5,152.5": {
   "points": 66,
   "storms": 17,
   "ri_pct": 0.0,
-  "weaken_pct": 21.2
+  "weaken_pct": 21.2,
+  "land": 0.0
  },
  "12.5,155.0": {
   "points": 58,
   "storms": 15,
   "ri_pct": 0.0,
-  "weaken_pct": 3.4
+  "weaken_pct": 3.4,
+  "land": 0.0
  },
  "12.5,157.5": {
   "points": 38,
   "storms": 12,
   "ri_pct": 0.0,
-  "weaken_pct": 10.5
+  "weaken_pct": 10.5,
+  "land": 0.0
  },
  "12.5,160.0": {
   "points": 34,
   "storms": 10,
   "ri_pct": 0.0,
-  "weaken_pct": 5.9
+  "weaken_pct": 5.9,
+  "land": 0.0
  },
  "12.5,162.5": {
   "points": 23,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "12.5,165.0": {
   "points": 18,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "12.5,167.5": {
   "points": 23,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "12.5,170.0": {
   "points": 16,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 25.0
+  "weaken_pct": 25.0,
+  "land": 0.0
  },
  "12.5,172.5": {
   "points": 20,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "12.5,175.0": {
   "points": 7,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "12.5,177.5": {
   "points": 2,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 50.0
+  "weaken_pct": 50.0,
+  "land": 0.0
  },
  "15.0,110.0": {
   "points": 67,
   "storms": 15,
   "ri_pct": 4.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "15.0,112.5": {
   "points": 148,
   "storms": 33,
   "ri_pct": 1.4,
-  "weaken_pct": 0.7
+  "weaken_pct": 0.7,
+  "land": 0.0
  },
  "15.0,115.0": {
   "points": 253,
   "storms": 56,
   "ri_pct": 3.6,
-  "weaken_pct": 1.6
+  "weaken_pct": 1.6,
+  "land": 0.0
  },
  "15.0,117.5": {
   "points": 266,
   "storms": 61,
   "ri_pct": 8.6,
-  "weaken_pct": 1.1
+  "weaken_pct": 1.1,
+  "land": 0.01
  },
  "15.0,120.0": {
   "points": 165,
   "storms": 48,
   "ri_pct": 10.9,
-  "weaken_pct": 3.6
+  "weaken_pct": 3.6,
+  "land": 0.7
  },
  "15.0,122.5": {
   "points": 333,
   "storms": 78,
   "ri_pct": 2.1,
-  "weaken_pct": 14.7
+  "weaken_pct": 14.7,
+  "land": 0.0
  },
  "15.0,125.0": {
   "points": 311,
   "storms": 72,
   "ri_pct": 1.0,
-  "weaken_pct": 10.6
+  "weaken_pct": 10.6,
+  "land": 0.0
  },
  "15.0,127.5": {
   "points": 223,
   "storms": 59,
   "ri_pct": 0.9,
-  "weaken_pct": 17.9
+  "weaken_pct": 17.9,
+  "land": 0.0
  },
  "15.0,130.0": {
   "points": 340,
   "storms": 65,
   "ri_pct": 0.9,
-  "weaken_pct": 12.6
+  "weaken_pct": 12.6,
+  "land": 0.0
  },
  "15.0,132.5": {
   "points": 278,
   "storms": 63,
   "ri_pct": 0.4,
-  "weaken_pct": 19.4
+  "weaken_pct": 19.4,
+  "land": 0.0
  },
  "15.0,135.0": {
   "points": 240,
   "storms": 57,
   "ri_pct": 1.2,
-  "weaken_pct": 15.8
+  "weaken_pct": 15.8,
+  "land": 0.0
  },
  "15.0,137.5": {
   "points": 157,
   "storms": 41,
   "ri_pct": 3.2,
-  "weaken_pct": 9.6
+  "weaken_pct": 9.6,
+  "land": 0.0
  },
  "15.0,140.0": {
   "points": 198,
   "storms": 47,
   "ri_pct": 1.5,
-  "weaken_pct": 10.6
+  "weaken_pct": 10.6,
+  "land": 0.0
  },
  "15.0,142.5": {
   "points": 86,
   "storms": 28,
   "ri_pct": 0.0,
-  "weaken_pct": 19.8
+  "weaken_pct": 19.8,
+  "land": 0.0
  },
  "15.0,145.0": {
   "points": 93,
   "storms": 25,
   "ri_pct": 0.0,
-  "weaken_pct": 21.5
+  "weaken_pct": 21.5,
+  "land": 0.0
  },
  "15.0,147.5": {
   "points": 97,
   "storms": 24,
   "ri_pct": 0.0,
-  "weaken_pct": 14.4
+  "weaken_pct": 14.4,
+  "land": 0.0
  },
  "15.0,150.0": {
   "points": 96,
   "storms": 23,
   "ri_pct": 0.0,
-  "weaken_pct": 6.2
+  "weaken_pct": 6.2,
+  "land": 0.0
  },
  "15.0,152.5": {
   "points": 75,
   "storms": 21,
   "ri_pct": 4.0,
-  "weaken_pct": 1.3
+  "weaken_pct": 1.3,
+  "land": 0.0
  },
  "15.0,155.0": {
   "points": 60,
   "storms": 17,
   "ri_pct": 0.0,
-  "weaken_pct": 15.0
+  "weaken_pct": 15.0,
+  "land": 0.0
  },
  "15.0,157.5": {
   "points": 51,
   "storms": 12,
   "ri_pct": 0.0,
-  "weaken_pct": 11.8
+  "weaken_pct": 11.8,
+  "land": 0.0
  },
  "15.0,160.0": {
   "points": 28,
   "storms": 9,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "15.0,162.5": {
   "points": 4,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "15.0,165.0": {
   "points": 4,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "15.0,167.5": {
   "points": 11,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "15.0,170.0": {
   "points": 32,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 6.2
+  "weaken_pct": 6.2,
+  "land": 0.0
  },
  "15.0,172.5": {
   "points": 30,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 3.3
+  "weaken_pct": 3.3,
+  "land": 0.0
  },
  "15.0,175.0": {
   "points": 15,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "15.0,177.5": {
   "points": 1,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "17.5,110.0": {
   "points": 76,
   "storms": 21,
   "ri_pct": 10.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.03
  },
  "17.5,112.5": {
   "points": 165,
   "storms": 42,
   "ri_pct": 1.8,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "17.5,115.0": {
   "points": 367,
   "storms": 67,
   "ri_pct": 2.7,
-  "weaken_pct": 3.0
+  "weaken_pct": 3.0,
+  "land": 0.0
  },
  "17.5,117.5": {
   "points": 259,
   "storms": 62,
   "ri_pct": 9.3,
-  "weaken_pct": 4.2
+  "weaken_pct": 4.2,
+  "land": 0.0
  },
  "17.5,120.0": {
   "points": 244,
   "storms": 57,
   "ri_pct": 7.0,
-  "weaken_pct": 3.3
+  "weaken_pct": 3.3,
+  "land": 0.18
  },
  "17.5,122.5": {
   "points": 366,
   "storms": 73,
   "ri_pct": 0.3,
-  "weaken_pct": 10.4
+  "weaken_pct": 10.4,
+  "land": 0.0
  },
  "17.5,125.0": {
   "points": 269,
   "storms": 65,
   "ri_pct": 0.4,
-  "weaken_pct": 16.7
+  "weaken_pct": 16.7,
+  "land": 0.0
  },
  "17.5,127.5": {
   "points": 242,
   "storms": 54,
   "ri_pct": 0.4,
-  "weaken_pct": 12.0
+  "weaken_pct": 12.0,
+  "land": 0.0
  },
  "17.5,130.0": {
   "points": 322,
   "storms": 72,
   "ri_pct": 1.6,
-  "weaken_pct": 9.6
+  "weaken_pct": 9.6,
+  "land": 0.0
  },
  "17.5,132.5": {
   "points": 222,
   "storms": 56,
   "ri_pct": 5.0,
-  "weaken_pct": 11.7
+  "weaken_pct": 11.7,
+  "land": 0.0
  },
  "17.5,135.0": {
   "points": 193,
   "storms": 44,
   "ri_pct": 4.7,
-  "weaken_pct": 13.0
+  "weaken_pct": 13.0,
+  "land": 0.0
  },
  "17.5,137.5": {
   "points": 180,
   "storms": 45,
   "ri_pct": 1.7,
-  "weaken_pct": 10.6
+  "weaken_pct": 10.6,
+  "land": 0.0
  },
  "17.5,140.0": {
   "points": 182,
   "storms": 39,
   "ri_pct": 2.2,
-  "weaken_pct": 10.4
+  "weaken_pct": 10.4,
+  "land": 0.0
  },
  "17.5,142.5": {
   "points": 128,
   "storms": 35,
   "ri_pct": 3.1,
-  "weaken_pct": 12.5
+  "weaken_pct": 12.5,
+  "land": 0.0
  },
  "17.5,145.0": {
   "points": 102,
   "storms": 27,
   "ri_pct": 4.9,
-  "weaken_pct": 4.9
+  "weaken_pct": 4.9,
+  "land": 0.0
  },
  "17.5,147.5": {
   "points": 68,
   "storms": 21,
   "ri_pct": 0.0,
-  "weaken_pct": 7.4
+  "weaken_pct": 7.4,
+  "land": 0.0
  },
  "17.5,150.0": {
   "points": 82,
   "storms": 21,
   "ri_pct": 0.0,
-  "weaken_pct": 17.1
+  "weaken_pct": 17.1,
+  "land": 0.0
  },
  "17.5,152.5": {
   "points": 65,
   "storms": 21,
   "ri_pct": 0.0,
-  "weaken_pct": 10.8
+  "weaken_pct": 10.8,
+  "land": 0.0
  },
  "17.5,155.0": {
   "points": 70,
   "storms": 16,
   "ri_pct": 0.0,
-  "weaken_pct": 8.6
+  "weaken_pct": 8.6,
+  "land": 0.0
  },
  "17.5,157.5": {
   "points": 30,
   "storms": 8,
   "ri_pct": 0.0,
-  "weaken_pct": 10.0
+  "weaken_pct": 10.0,
+  "land": 0.0
  },
  "17.5,160.0": {
   "points": 19,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "17.5,162.5": {
   "points": 14,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 7.1
+  "weaken_pct": 7.1,
+  "land": 0.0
  },
  "17.5,165.0": {
   "points": 26,
   "storms": 7,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "17.5,167.5": {
   "points": 26,
   "storms": 7,
   "ri_pct": 0.0,
-  "weaken_pct": 15.4
+  "weaken_pct": 15.4,
+  "land": 0.0
  },
  "17.5,170.0": {
   "points": 14,
   "storms": 4,
   "ri_pct": 14.3,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "17.5,172.5": {
   "points": 9,
   "storms": 3,
   "ri_pct": 22.2,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "17.5,175.0": {
   "points": 10,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "20.0,110.0": {
   "points": 89,
   "storms": 12,
   "ri_pct": 1.1,
-  "weaken_pct": 1.1
+  "weaken_pct": 1.1,
+  "land": 0.37
  },
  "20.0,112.5": {
   "points": 144,
   "storms": 28,
   "ri_pct": 1.4,
-  "weaken_pct": 2.1
+  "weaken_pct": 2.1,
+  "land": 0.03
  },
  "20.0,115.0": {
   "points": 241,
   "storms": 46,
   "ri_pct": 0.4,
-  "weaken_pct": 1.2
+  "weaken_pct": 1.2,
+  "land": 0.0
  },
  "20.0,117.5": {
   "points": 241,
   "storms": 48,
   "ri_pct": 6.2,
-  "weaken_pct": 0.8
+  "weaken_pct": 0.8,
+  "land": 0.0
  },
  "20.0,120.0": {
   "points": 231,
   "storms": 54,
   "ri_pct": 5.6,
-  "weaken_pct": 2.2
+  "weaken_pct": 2.2,
+  "land": 0.02
  },
  "20.0,122.5": {
   "points": 291,
   "storms": 66,
   "ri_pct": 4.5,
-  "weaken_pct": 5.2
+  "weaken_pct": 5.2,
+  "land": 0.0
  },
  "20.0,125.0": {
   "points": 256,
   "storms": 61,
   "ri_pct": 1.6,
-  "weaken_pct": 4.3
+  "weaken_pct": 4.3,
+  "land": 0.0
  },
  "20.0,127.5": {
   "points": 308,
   "storms": 59,
   "ri_pct": 3.9,
-  "weaken_pct": 6.2
+  "weaken_pct": 6.2,
+  "land": 0.0
  },
  "20.0,130.0": {
   "points": 224,
   "storms": 51,
   "ri_pct": 3.1,
-  "weaken_pct": 5.8
+  "weaken_pct": 5.8,
+  "land": 0.0
  },
  "20.0,132.5": {
   "points": 203,
   "storms": 52,
   "ri_pct": 0.5,
-  "weaken_pct": 7.4
+  "weaken_pct": 7.4,
+  "land": 0.0
  },
  "20.0,135.0": {
   "points": 196,
   "storms": 48,
   "ri_pct": 2.0,
-  "weaken_pct": 10.7
+  "weaken_pct": 10.7,
+  "land": 0.0
  },
  "20.0,137.5": {
   "points": 182,
   "storms": 44,
   "ri_pct": 0.5,
-  "weaken_pct": 8.8
+  "weaken_pct": 8.8,
+  "land": 0.0
  },
  "20.0,140.0": {
   "points": 171,
   "storms": 38,
   "ri_pct": 0.0,
-  "weaken_pct": 13.5
+  "weaken_pct": 13.5,
+  "land": 0.0
  },
  "20.0,142.5": {
   "points": 110,
   "storms": 30,
   "ri_pct": 0.0,
-  "weaken_pct": 13.6
+  "weaken_pct": 13.6,
+  "land": 0.0
  },
  "20.0,145.0": {
   "points": 78,
   "storms": 22,
   "ri_pct": 2.6,
-  "weaken_pct": 12.8
+  "weaken_pct": 12.8,
+  "land": 0.0
  },
  "20.0,147.5": {
   "points": 68,
   "storms": 20,
   "ri_pct": 0.0,
-  "weaken_pct": 7.4
+  "weaken_pct": 7.4,
+  "land": 0.0
  },
  "20.0,150.0": {
   "points": 62,
   "storms": 16,
   "ri_pct": 1.6,
-  "weaken_pct": 11.3
+  "weaken_pct": 11.3,
+  "land": 0.0
  },
  "20.0,152.5": {
   "points": 83,
   "storms": 17,
   "ri_pct": 0.0,
-  "weaken_pct": 1.2
+  "weaken_pct": 1.2,
+  "land": 0.0
  },
  "20.0,155.0": {
   "points": 49,
   "storms": 11,
   "ri_pct": 0.0,
-  "weaken_pct": 2.0
+  "weaken_pct": 2.0,
+  "land": 0.0
  },
  "20.0,157.5": {
   "points": 41,
   "storms": 8,
   "ri_pct": 0.0,
-  "weaken_pct": 7.3
+  "weaken_pct": 7.3,
+  "land": 0.0
  },
  "20.0,160.0": {
   "points": 19,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "20.0,162.5": {
   "points": 23,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 21.7
+  "weaken_pct": 21.7,
+  "land": 0.0
  },
  "20.0,165.0": {
   "points": 24,
   "storms": 6,
   "ri_pct": 4.2,
-  "weaken_pct": 12.5
+  "weaken_pct": 12.5,
+  "land": 0.0
  },
  "20.0,167.5": {
   "points": 12,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 25.0
+  "weaken_pct": 25.0,
+  "land": 0.0
  },
  "20.0,170.0": {
   "points": 3,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "20.0,172.5": {
   "points": 2,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "20.0,175.0": {
   "points": 13,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "22.5,110.0": {
   "points": 26,
   "storms": 5,
   "ri_pct": 42.3,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "22.5,112.5": {
   "points": 44,
   "storms": 9,
   "ri_pct": 4.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "22.5,115.0": {
   "points": 66,
   "storms": 15,
   "ri_pct": 15.2,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.7
  },
  "22.5,117.5": {
   "points": 132,
   "storms": 31,
   "ri_pct": 26.5,
-  "weaken_pct": 0.8
+  "weaken_pct": 0.8,
+  "land": 0.14
  },
  "22.5,120.0": {
   "points": 221,
   "storms": 44,
   "ri_pct": 17.6,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.48
  },
  "22.5,122.5": {
   "points": 259,
   "storms": 63,
   "ri_pct": 4.2,
-  "weaken_pct": 1.5
+  "weaken_pct": 1.5,
+  "land": 0.0
  },
  "22.5,125.0": {
   "points": 254,
   "storms": 63,
   "ri_pct": 4.3,
-  "weaken_pct": 2.8
+  "weaken_pct": 2.8,
+  "land": 0.0
  },
  "22.5,127.5": {
   "points": 204,
   "storms": 58,
   "ri_pct": 7.8,
-  "weaken_pct": 3.9
+  "weaken_pct": 3.9,
+  "land": 0.0
  },
  "22.5,130.0": {
   "points": 220,
   "storms": 46,
   "ri_pct": 3.2,
-  "weaken_pct": 4.5
+  "weaken_pct": 4.5,
+  "land": 0.0
  },
  "22.5,132.5": {
   "points": 149,
   "storms": 45,
   "ri_pct": 4.7,
-  "weaken_pct": 2.0
+  "weaken_pct": 2.0,
+  "land": 0.0
  },
  "22.5,135.0": {
   "points": 128,
   "storms": 39,
   "ri_pct": 2.3,
-  "weaken_pct": 8.6
+  "weaken_pct": 8.6,
+  "land": 0.0
  },
  "22.5,137.5": {
   "points": 198,
   "storms": 46,
   "ri_pct": 3.5,
-  "weaken_pct": 4.0
+  "weaken_pct": 4.0,
+  "land": 0.0
  },
  "22.5,140.0": {
   "points": 214,
   "storms": 47,
   "ri_pct": 3.3,
-  "weaken_pct": 7.0
+  "weaken_pct": 7.0,
+  "land": 0.0
  },
  "22.5,142.5": {
   "points": 68,
   "storms": 24,
   "ri_pct": 0.0,
-  "weaken_pct": 7.4
+  "weaken_pct": 7.4,
+  "land": 0.0
  },
  "22.5,145.0": {
   "points": 86,
   "storms": 22,
   "ri_pct": 0.0,
-  "weaken_pct": 11.6
+  "weaken_pct": 11.6,
+  "land": 0.0
  },
  "22.5,147.5": {
   "points": 107,
   "storms": 28,
   "ri_pct": 1.9,
-  "weaken_pct": 10.3
+  "weaken_pct": 10.3,
+  "land": 0.0
  },
  "22.5,150.0": {
   "points": 70,
   "storms": 19,
   "ri_pct": 11.4,
-  "weaken_pct": 4.3
+  "weaken_pct": 4.3,
+  "land": 0.0
  },
  "22.5,152.5": {
   "points": 32,
   "storms": 10,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "22.5,155.0": {
   "points": 39,
   "storms": 11,
   "ri_pct": 0.0,
-  "weaken_pct": 5.1
+  "weaken_pct": 5.1,
+  "land": 0.0
  },
  "22.5,157.5": {
   "points": 23,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "22.5,160.0": {
   "points": 17,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "22.5,162.5": {
   "points": 29,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "22.5,165.0": {
   "points": 22,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "22.5,167.5": {
   "points": 22,
   "storms": 4,
   "ri_pct": 18.2,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "22.5,170.0": {
   "points": 5,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "22.5,172.5": {
   "points": 13,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "22.5,175.0": {
   "points": 18,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "22.5,177.5": {
   "points": 8,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "25.0,110.0": {
   "points": 7,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "25.0,112.5": {
   "points": 8,
   "storms": 4,
   "ri_pct": 37.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "25.0,115.0": {
   "points": 48,
   "storms": 12,
   "ri_pct": 70.8,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "25.0,117.5": {
   "points": 111,
   "storms": 32,
   "ri_pct": 29.7,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.85
  },
  "25.0,120.0": {
   "points": 151,
   "storms": 41,
   "ri_pct": 18.5,
-  "weaken_pct": 1.3
+  "weaken_pct": 1.3,
+  "land": 0.08
  },
  "25.0,122.5": {
   "points": 223,
   "storms": 51,
   "ri_pct": 0.4,
-  "weaken_pct": 1.3
+  "weaken_pct": 1.3,
+  "land": 0.0
  },
  "25.0,125.0": {
   "points": 289,
   "storms": 62,
   "ri_pct": 2.4,
-  "weaken_pct": 0.7
+  "weaken_pct": 0.7,
+  "land": 0.0
  },
  "25.0,127.5": {
   "points": 204,
   "storms": 52,
   "ri_pct": 6.4,
-  "weaken_pct": 2.5
+  "weaken_pct": 2.5,
+  "land": 0.0
  },
  "25.0,130.0": {
   "points": 140,
   "storms": 38,
   "ri_pct": 5.7,
-  "weaken_pct": 1.4
+  "weaken_pct": 1.4,
+  "land": 0.0
  },
  "25.0,132.5": {
   "points": 145,
   "storms": 44,
   "ri_pct": 2.1,
-  "weaken_pct": 4.1
+  "weaken_pct": 4.1,
+  "land": 0.0
  },
  "25.0,135.0": {
   "points": 142,
   "storms": 42,
   "ri_pct": 4.2,
-  "weaken_pct": 1.4
+  "weaken_pct": 1.4,
+  "land": 0.0
  },
  "25.0,137.5": {
   "points": 113,
   "storms": 30,
   "ri_pct": 5.3,
-  "weaken_pct": 2.7
+  "weaken_pct": 2.7,
+  "land": 0.0
  },
  "25.0,140.0": {
   "points": 158,
   "storms": 40,
   "ri_pct": 5.1,
-  "weaken_pct": 3.2
+  "weaken_pct": 3.2,
+  "land": 0.0
  },
  "25.0,142.5": {
   "points": 114,
   "storms": 35,
   "ri_pct": 8.8,
-  "weaken_pct": 3.5
+  "weaken_pct": 3.5,
+  "land": 0.0
  },
  "25.0,145.0": {
   "points": 120,
   "storms": 32,
   "ri_pct": 5.8,
-  "weaken_pct": 9.2
+  "weaken_pct": 9.2,
+  "land": 0.0
  },
  "25.0,147.5": {
   "points": 83,
   "storms": 24,
   "ri_pct": 3.6,
-  "weaken_pct": 3.6
+  "weaken_pct": 3.6,
+  "land": 0.0
  },
  "25.0,150.0": {
   "points": 43,
   "storms": 18,
   "ri_pct": 4.7,
-  "weaken_pct": 4.7
+  "weaken_pct": 4.7,
+  "land": 0.0
  },
  "25.0,152.5": {
   "points": 27,
   "storms": 12,
   "ri_pct": 11.1,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "25.0,155.0": {
   "points": 43,
   "storms": 14,
   "ri_pct": 7.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "25.0,157.5": {
   "points": 28,
   "storms": 10,
   "ri_pct": 0.0,
-  "weaken_pct": 3.6
+  "weaken_pct": 3.6,
+  "land": 0.0
  },
  "25.0,160.0": {
   "points": 26,
   "storms": 8,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "25.0,162.5": {
   "points": 28,
   "storms": 7,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "25.0,165.0": {
   "points": 21,
   "storms": 4,
   "ri_pct": 4.8,
-  "weaken_pct": 4.8
+  "weaken_pct": 4.8,
+  "land": 0.0
  },
  "25.0,167.5": {
   "points": 18,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "25.0,170.0": {
   "points": 4,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "25.0,172.5": {
   "points": 4,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "25.0,175.0": {
   "points": 20,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,112.5": {
   "points": 15,
   "storms": 3,
   "ri_pct": 6.7,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "27.5,115.0": {
   "points": 49,
   "storms": 12,
   "ri_pct": 38.8,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "27.5,117.5": {
   "points": 43,
   "storms": 18,
   "ri_pct": 41.9,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "27.5,120.0": {
   "points": 84,
   "storms": 24,
   "ri_pct": 13.1,
-  "weaken_pct": 1.2
+  "weaken_pct": 1.2,
+  "land": 0.57
  },
  "27.5,122.5": {
   "points": 105,
   "storms": 28,
   "ri_pct": 1.9,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,125.0": {
   "points": 212,
   "storms": 54,
   "ri_pct": 1.4,
-  "weaken_pct": 0.5
+  "weaken_pct": 0.5,
+  "land": 0.0
  },
  "27.5,127.5": {
   "points": 122,
   "storms": 42,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,130.0": {
   "points": 176,
   "storms": 42,
   "ri_pct": 2.8,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,132.5": {
   "points": 134,
   "storms": 43,
   "ri_pct": 1.5,
-  "weaken_pct": 1.5
+  "weaken_pct": 1.5,
+  "land": 0.0
  },
  "27.5,135.0": {
   "points": 130,
   "storms": 39,
   "ri_pct": 0.8,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,137.5": {
   "points": 102,
   "storms": 38,
   "ri_pct": 2.9,
-  "weaken_pct": 1.0
+  "weaken_pct": 1.0,
+  "land": 0.0
  },
  "27.5,140.0": {
   "points": 135,
   "storms": 41,
   "ri_pct": 4.4,
-  "weaken_pct": 3.0
+  "weaken_pct": 3.0,
+  "land": 0.0
  },
  "27.5,142.5": {
   "points": 119,
   "storms": 34,
   "ri_pct": 2.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,145.0": {
   "points": 64,
   "storms": 20,
   "ri_pct": 0.0,
-  "weaken_pct": 7.8
+  "weaken_pct": 7.8,
+  "land": 0.0
  },
  "27.5,147.5": {
   "points": 43,
   "storms": 19,
   "ri_pct": 11.6,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,150.0": {
   "points": 52,
   "storms": 18,
   "ri_pct": 5.8,
-  "weaken_pct": 3.8
+  "weaken_pct": 3.8,
+  "land": 0.0
  },
  "27.5,152.5": {
   "points": 52,
   "storms": 16,
   "ri_pct": 3.8,
-  "weaken_pct": 1.9
+  "weaken_pct": 1.9,
+  "land": 0.0
  },
  "27.5,155.0": {
   "points": 32,
   "storms": 12,
   "ri_pct": 3.1,
-  "weaken_pct": 3.1
+  "weaken_pct": 3.1,
+  "land": 0.0
  },
  "27.5,157.5": {
   "points": 36,
   "storms": 11,
   "ri_pct": 8.3,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,160.0": {
   "points": 21,
   "storms": 8,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,162.5": {
   "points": 19,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,165.0": {
   "points": 16,
   "storms": 5,
   "ri_pct": 6.2,
-  "weaken_pct": 12.5
+  "weaken_pct": 12.5,
+  "land": 0.0
  },
  "27.5,167.5": {
   "points": 22,
   "storms": 5,
   "ri_pct": 4.5,
-  "weaken_pct": 13.6
+  "weaken_pct": 13.6,
+  "land": 0.0
  },
  "27.5,170.0": {
   "points": 32,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,172.5": {
   "points": 7,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "27.5,175.0": {
   "points": 8,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,112.5": {
   "points": 5,
   "storms": 2,
   "ri_pct": 40.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "30.0,115.0": {
   "points": 31,
   "storms": 8,
   "ri_pct": 6.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "30.0,117.5": {
   "points": 62,
   "storms": 14,
   "ri_pct": 16.1,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "30.0,120.0": {
   "points": 76,
   "storms": 19,
   "ri_pct": 14.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.68
  },
  "30.0,122.5": {
   "points": 76,
   "storms": 24,
   "ri_pct": 7.9,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,125.0": {
   "points": 119,
   "storms": 39,
   "ri_pct": 3.4,
-  "weaken_pct": 0.8
+  "weaken_pct": 0.8,
+  "land": 0.0
  },
  "30.0,127.5": {
   "points": 93,
   "storms": 29,
   "ri_pct": 2.2,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,130.0": {
   "points": 86,
   "storms": 30,
   "ri_pct": 3.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.15
  },
  "30.0,132.5": {
   "points": 96,
   "storms": 33,
   "ri_pct": 3.1,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,135.0": {
   "points": 108,
   "storms": 35,
   "ri_pct": 2.8,
-  "weaken_pct": 0.9
+  "weaken_pct": 0.9,
+  "land": 0.0
  },
  "30.0,137.5": {
   "points": 136,
   "storms": 35,
   "ri_pct": 0.7,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,140.0": {
   "points": 112,
   "storms": 30,
   "ri_pct": 3.6,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,142.5": {
   "points": 89,
   "storms": 28,
   "ri_pct": 2.2,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,145.0": {
   "points": 56,
   "storms": 23,
   "ri_pct": 1.8,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,147.5": {
   "points": 49,
   "storms": 21,
   "ri_pct": 4.1,
-  "weaken_pct": 6.1
+  "weaken_pct": 6.1,
+  "land": 0.0
  },
  "30.0,150.0": {
   "points": 40,
   "storms": 14,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,152.5": {
   "points": 30,
   "storms": 12,
   "ri_pct": 3.3,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,155.0": {
   "points": 7,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,157.5": {
   "points": 29,
   "storms": 9,
   "ri_pct": 6.9,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,160.0": {
   "points": 16,
   "storms": 8,
   "ri_pct": 18.8,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,162.5": {
   "points": 19,
   "storms": 8,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,165.0": {
   "points": 20,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,167.5": {
   "points": 10,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,170.0": {
   "points": 18,
   "storms": 7,
   "ri_pct": 11.1,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,172.5": {
   "points": 10,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "30.0,175.0": {
   "points": 8,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,112.5": {
   "points": 11,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "32.5,115.0": {
   "points": 24,
   "storms": 6,
   "ri_pct": 12.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "32.5,117.5": {
   "points": 18,
   "storms": 8,
   "ri_pct": 11.1,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.89
  },
  "32.5,120.0": {
   "points": 33,
   "storms": 12,
   "ri_pct": 18.2,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.45
  },
  "32.5,122.5": {
   "points": 53,
   "storms": 18,
   "ri_pct": 1.9,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,125.0": {
   "points": 50,
   "storms": 20,
   "ri_pct": 4.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.06
  },
  "32.5,127.5": {
   "points": 27,
   "storms": 15,
   "ri_pct": 3.7,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.11
  },
  "32.5,130.0": {
   "points": 56,
   "storms": 15,
   "ri_pct": 46.4,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.61
  },
  "32.5,132.5": {
   "points": 58,
   "storms": 23,
   "ri_pct": 3.4,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.36
  },
  "32.5,135.0": {
   "points": 76,
   "storms": 28,
   "ri_pct": 3.9,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.22
  },
  "32.5,137.5": {
   "points": 56,
   "storms": 27,
   "ri_pct": 1.8,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.02
  },
  "32.5,140.0": {
   "points": 73,
   "storms": 26,
   "ri_pct": 1.4,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,142.5": {
   "points": 61,
   "storms": 18,
   "ri_pct": 3.3,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,145.0": {
   "points": 63,
   "storms": 25,
   "ri_pct": 4.8,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,147.5": {
   "points": 65,
   "storms": 24,
   "ri_pct": 0.0,
-  "weaken_pct": 4.6
+  "weaken_pct": 4.6,
+  "land": 0.0
  },
  "32.5,150.0": {
   "points": 40,
   "storms": 15,
   "ri_pct": 2.5,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,152.5": {
   "points": 10,
   "storms": 6,
   "ri_pct": 10.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,155.0": {
   "points": 13,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,157.5": {
   "points": 7,
   "storms": 4,
   "ri_pct": 14.3,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,160.0": {
   "points": 10,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,162.5": {
   "points": 4,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,165.0": {
   "points": 13,
   "storms": 5,
   "ri_pct": 7.7,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,167.5": {
   "points": 20,
   "storms": 4,
   "ri_pct": 25.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,170.0": {
   "points": 12,
   "storms": 5,
   "ri_pct": 16.7,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,172.5": {
   "points": 2,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "32.5,175.0": {
   "points": 19,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,112.5": {
   "points": 1,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "35.0,115.0": {
   "points": 12,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "35.0,117.5": {
   "points": 18,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.72
  },
  "35.0,120.0": {
   "points": 5,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.4
  },
  "35.0,122.5": {
   "points": 6,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,125.0": {
   "points": 4,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.5
  },
  "35.0,127.5": {
   "points": 15,
   "storms": 9,
   "ri_pct": 20.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.8
  },
  "35.0,130.0": {
   "points": 12,
   "storms": 8,
   "ri_pct": 33.3,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,132.5": {
   "points": 13,
   "storms": 6,
   "ri_pct": 15.4,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.46
  },
  "35.0,135.0": {
   "points": 12,
   "storms": 5,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.83
  },
  "35.0,137.5": {
   "points": 8,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.62
  },
  "35.0,140.0": {
   "points": 24,
   "storms": 11,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.17
  },
  "35.0,142.5": {
   "points": 33,
   "storms": 11,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,145.0": {
   "points": 24,
   "storms": 8,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,147.5": {
   "points": 17,
   "storms": 10,
   "ri_pct": 0.0,
-  "weaken_pct": 5.9
+  "weaken_pct": 5.9,
+  "land": 0.0
  },
  "35.0,150.0": {
   "points": 26,
   "storms": 10,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,152.5": {
   "points": 16,
   "storms": 6,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,155.0": {
   "points": 8,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,157.5": {
   "points": 10,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,160.0": {
   "points": 1,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,162.5": {
   "points": 11,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,165.0": {
   "points": 13,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "35.0,170.0": {
   "points": 5,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,115.0": {
   "points": 1,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "37.5,117.5": {
   "points": 10,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.5
  },
  "37.5,120.0": {
   "points": 4,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.25
  },
  "37.5,127.5": {
   "points": 1,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 1.0
  },
  "37.5,130.0": {
   "points": 10,
   "storms": 3,
   "ri_pct": 20.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,132.5": {
   "points": 9,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,135.0": {
   "points": 6,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,137.5": {
   "points": 2,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.5
  },
  "37.5,140.0": {
   "points": 3,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.67
  },
  "37.5,142.5": {
   "points": 10,
   "storms": 4,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,145.0": {
   "points": 4,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,147.5": {
   "points": 15,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,150.0": {
   "points": 9,
   "storms": 2,
   "ri_pct": 11.1,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,152.5": {
   "points": 4,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,155.0": {
   "points": 5,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,157.5": {
   "points": 4,
   "storms": 3,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,160.0": {
   "points": 2,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,162.5": {
   "points": 1,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,165.0": {
   "points": 3,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,167.5": {
   "points": 2,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,170.0": {
   "points": 5,
   "storms": 2,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  },
  "37.5,172.5": {
   "points": 1,
   "storms": 1,
   "ri_pct": 0.0,
-  "weaken_pct": 0.0
+  "weaken_pct": 0.0,
+  "land": 0.0
  }
 }

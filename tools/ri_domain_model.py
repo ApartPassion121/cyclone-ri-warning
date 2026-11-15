@@ -203,6 +203,9 @@ def main():
             "points": int(len(d)), "storms": int(d["SID"].nunique()),
             "ri_pct": round(float((d["LABEL"] == "RI").mean() * 100), 1),
             "weaken_pct": round(float((d["LABEL"] == "WEAKEN").mean() * 100), 1),
+            # IBTrACS DIST2LAND is 0 while the centre is over land; a cell where
+            # every report was inland is a landfall track, not ocean climatology
+            "land": round(float((d["DIST2LAND"] == 0).mean()), 2),
         }
     defaults = {}
     keep_defaults = [f for f in features if f not in ("LON_SIN", "LON_COS")]

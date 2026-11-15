@@ -358,6 +358,9 @@ function cells(){
   const out=[];
   if(!STATS || layer==='off') return out;
   for(const [k,s] of Object.entries(allStats())){
+    // every training report in this cell was over land: the cell is a track
+    // coming ashore (Guangdong, Mexico), not ocean climatology
+    if(s.land>0.98) continue;
     const [a,b]=k.split(',').map(Number);
     const val=cellVal(s,k); if(!val) continue;
     const t=Math.max(0,Math.min(1,val.t));
@@ -568,8 +571,10 @@ function scaleCaption(){
   const el=document.getElementById('scalecap'); if(!el) return;
   if(layer==='off'){ el.textContent='no layer'; return; }
   if(layer==='ri'){
-    const thin=STATS ? Object.values(STATS).filter(s=>s.points<THIN_PTS).length : 0;
-    el.textContent='all-season'+(thin?` · ${thin} thin cells dimmed (<${THIN_PTS} points)`:'');
+    const all=Object.values(allStats());
+    const thin=all.filter(s=>s.points<THIN_PTS).length;
+    const land=all.filter(s=>s.land>0.98).length;
+    el.textContent='all-season'+(thin?` · ${thin} thin cells dimmed (<${THIN_PTS} points)`:'')+(land?` · ${land} land cells hidden`:'');
     return;
   }
   const have=cells().length, all=Object.keys(allStats()).length;
