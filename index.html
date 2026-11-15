@@ -434,16 +434,19 @@ function redraw(){
   const cs=cells();
   const pts=(shape==='columns'||shape==='dots') ? cs.map(dotOf) : [];
   const tp=trackPoint();
+  // Selection + live layers are set BEFORE the custom layer: rebuilding the
+  // ~200 cell meshes in the same tick was swallowing the updates queued after
+  // it, which left the pointer label/ring/crosshair stuck on the old cell.
   world.pointsData(pts.concat(tp ? [markerPoint(), tp] : [markerPoint()], livePoints()));
-  const clData = shape==='cells' ? cs.map(c=>({lat:c.lat, lng:c.lng, color:washColor(c.t,0.2)})) : [];
-  if(windOn && WINDJ) clData.push(WIND_DATUM);
-  world.customLayerData(clData);
-  world.polygonsData([]);
-  world.heatmapsData(shape==='field' ? [cs.map(fieldOf)] : []);
   world.ringsData([{lat:sel.lat,lng:sel.lng,color:['rgba(255,198,138,0.8)','rgba(255,198,138,0)']}]
     .concat((LIVE&&LIVE.storms?LIVE.storms:[]).map(st=>{ const ep=effPos(st); return {lat:ep.lat,lng:ep.lon,color:['rgba(255,120,71,0.85)','rgba(255,120,71,0)']}; })));
   world.labelsData([{lat:sel.lat,lng:sel.lng,label:selLabel()}].concat(liveLabels()));
   world.pathsData(staticPaths().concat(crossPaths(), trackPaths()));
+  world.polygonsData([]);
+  world.heatmapsData(shape==='field' ? [cs.map(fieldOf)] : []);
+  const clData = shape==='cells' ? cs.map(c=>({lat:c.lat, lng:c.lng, color:washColor(c.t,0.2)})) : [];
+  if(windOn && WINDJ) clData.push(WIND_DATUM);
+  world.customLayerData(clData);
   setScale();
 }
 /* Time steps only move the live-storm layers. They deliberately do NOT touch the
