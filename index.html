@@ -16,7 +16,8 @@
   #hud p { color:#8fa3ad; margin-top:2px; }
   #hud p b { color:#cfe3cf; font-weight:500; }
   .box { position:fixed; background:rgba(3,6,8,.78); }
-  #ctl { left:12px; bottom:12px; padding:7px 9px; line-height:1.9; }
+  /* keep the control box clear of the centred time bar (it used to run underneath it) */
+  #ctl { left:12px; bottom:12px; padding:7px 9px; line-height:1.9; max-width:calc(50vw - 190px); }
   #ctl .k { color:#697d87; margin-right:5px; }
   .hint { color:#4d5f69; line-height:1.5; margin:2px 0 3px; }
   .lnk { color:#9db0ba; cursor:pointer; padding:1px 3px; }
@@ -53,6 +54,10 @@
   .v-ri { background:rgba(176,58,46,.15); border-color:#d7191c; }
   .v-we { background:rgba(63,131,196,.13); border-color:#3f83c4; }
   .v-st { background:rgba(127,176,105,.11); border-color:#7fb069; }
+  #conds { margin-top:8px; border-top:1px solid #26333b; padding-top:6px; color:#8fa3ad; line-height:1.6; display:none; }
+  #conds .hd { color:#8fa3ad; letter-spacing:.09em; font-size:10px; margin-bottom:3px; }
+  #conds .ok { color:#7fb069; } #conds .bad { color:#e08a4c; } #conds .na { color:#4d5f69; }
+  #conds .note { color:#4d5f69; line-height:1.45; margin-top:4px; font-size:10px; }
   #open { position:fixed; right:12px; top:12px; display:none; color:#9db0ba; background:rgba(3,6,8,.78); padding:5px 9px; cursor:pointer; letter-spacing:.1em; }
   #open:hover { color:#fff; }
   #timebar { left:50%; transform:translateX(-50%); bottom:12px; padding:6px 10px; display:none; align-items:center; gap:9px; white-space:nowrap; }
@@ -60,11 +65,11 @@
   #tplay { cursor:pointer; color:#e8eef1; padding:1px 4px; }
   #tplay:hover { color:#fff; }
   #tlabel { color:#cfe3cf; }
-  @media (max-width:820px){ #timebar { bottom:182px; max-width:94vw; } }
+  @media (max-width:820px){ #timebar { bottom:12px; max-width:94vw; } }
   #tlabel .tag { color:#697d87; }
   .scene-tooltip { font:11px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#dfe9ee; background:rgba(4,9,13,.92); border:1px solid #2a3a44; padding:3px 6px; pointer-events:none; white-space:nowrap; }
   .scene-tooltip:empty { display:none; }
-  @media (max-width:820px){ #panel{ left:12px; width:auto; max-height:48vh; } #hud p{display:none;} }
+  @media (max-width:820px){ #panel{ left:12px; width:auto; max-height:48vh; } #hud p{display:none;} #ctl{max-width:none; bottom:52px;} }
 </style>
 </head>
 <body>
@@ -119,12 +124,13 @@
       <div class="bar-row"><span class="nm">STEADY</span><div class="bar-bg"><div class="bar-fill" id="b-st" style="background:#7fb069"></div></div><span class="pc" id="p-st"></span></div>
     </div>
     <div id="verdict"></div>
+    <div id="conds"></div>
   </div>
 </div>
 <div id="open">STORM</div>
 
 <script>
-let W=null, STATS=null, DEFS=null, TRACK=null, LIVE=null, liveTrack=null;
+let W=null, STATS=null, DEFS=null, TRACK=null, LIVE=null, ENV=null, liveTrack=null;
 const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 let layer='ri', shape='cells', month=new Date().getMonth()+1;
 let sel={lat:16.25, lng:127.5, cell:"15.0,127.5"};
@@ -450,9 +456,17 @@ function redrawSelection(){
 /* Time steps only move the live-storm layers. They deliberately do NOT touch the
    cell meshes or the heatmap (the expensive layers) — rebuilding those every
    playback step was the main source of stutter. */
+let PTS_CACHE=null, PTS_KEY='';
+/* Dot/column objects are reused between time steps and clicks: handing
+   three-globe fresh objects made it rebuild all 183 cylinders each time. */
+function dataPoints(){
+  if(shape!=='columns' && shape!=='dots') return [];
+  const key=layer+'|'+shape+'|'+month;
+  if(PTS_KEY!==key || !PTS_CACHE){ PTS_CACHE=cells().map(dotOf); PTS_KEY=key; }
+  return PTS_CACHE;
+}
 function updateLiveLayers(){
-  const cs=cells();
-  const pts=(shape==='columns'||shape==='dots') ? cs.map(dotOf) : [];
+  const pts=dataPoints();
   const tp=trackPoint();
   world.pointsData(pts.concat(tp ? [markerPoint(), tp] : [markerPoint()], livePoints()));
   world.ringsData([{lat:sel.lat,lng:sel.lng,color:['rgba(255,198,138,0.8)','rgba(255,198,138,0)']}]
@@ -490,6 +504,25 @@ function applyCell(){
     : `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · no storms recorded in this cell`;
   const fb={WIND:65,PRES:990,DWIND_24:5,DWIND_12:5,DWIND_6:0,DPRES_6:-2,DPRES_24:-5,SST:29,DIST2LAND:300,SPEED:8};
   FIELDS.forEach(([k])=>{ document.getElementById('in-'+k).value = d && d[k]!==undefined ? d[k] : fb[k]; });
+  conds();
+}
+/* The six classic formation conditions. The first three are model inputs; the
+   last three come from the ERA5 climatology (typical value for this cell and
+   month, 2000-2020) and are context for the reader - they are NOT scored. */
+const COND_TH={sst:26.5, cor:5, wind:34, shear:10, rh:55, cape:400};
+function conds(){
+  const box=document.getElementById('conds'); if(!box) return;
+  const v=vals(), e=ENV && ENV[sel.cell+','+month], lat=Math.abs(sel.lat);
+  const row=(ok,label,val)=>`<div><span class="${ok===null?'na':(ok?'ok':'bad')}">${ok===null?'·':(ok?'+':'−')}</span> ${label} <span class="na">${val}</span></div>`;
+  box.innerHTML='<div class="hd">CONDITIONS</div>'+
+    row(v.SST>=COND_TH.sst,'Warm ocean',`${v.SST}°C · ≥${COND_TH.sst}`)+
+    row(lat>=COND_TH.cor,'Coriolis',`${lat.toFixed(1)}° · ≥${COND_TH.cor}`)+
+    row(v.WIND>=COND_TH.wind,'Storm exists',`${v.WIND} kt · ≥${COND_TH.wind}`)+
+    row(e?e.SHEAR<COND_TH.shear:null,'Wind shear',e?`${e.SHEAR} m/s · <${COND_TH.shear}`:'no data')+
+    row(e?e.RH>=COND_TH.rh:null,'Humidity 700',e?`${e.RH}% · ≥${COND_TH.rh}`:'no data')+
+    row(e?e.CAPE>=COND_TH.cape:null,'Instability',e?`${e.CAPE} J/kg · ≥${COND_TH.cape}`:'no data')+
+    '<div class="note">first three are model inputs · ERA5 rows are typical for this cell &amp; month: context, not scored</div>';
+  box.style.display='block';
 }
 function vals(){
   const v={}; FIELDS.forEach(([k])=> v[k]=parseFloat(document.getElementById('in-'+k).value)||0);
@@ -511,6 +544,7 @@ function predict(){
   if(P.RI>=T){ vd.className='v-ri'; vd.innerHTML=`<b>RI WATCH</b> — prepare. Not an evacuation order.`; }
   else if(P.WEAKEN>=T){ vd.className='v-we'; vd.innerHTML=`<b>RAPID WEAKENING LIKELY</b> — wind threat falls; flood risk may persist.`; }
   else { vd.className='v-st'; vd.innerHTML=`<b>STEADY</b> — no rapid change likely in 24 h.`; }
+  conds();
 }
 document.getElementById('predict').onclick=predict;
 document.querySelectorAll('.lay').forEach(b=> b.onclick=()=>{
@@ -561,21 +595,35 @@ let WINDJ=null, windOn=true;
 const WIND_DATUM={wind:true};
 const WIND_N=(window.innerWidth<760 || (navigator.hardwareConcurrency||8)<=4) ? 4000 : 10000, WIND_K=0.5;  // fewer particles on small/low-power screens; visual speed: degrees per second per (m/s)
 let windGroup=null, windGeo=null, windParts=[], windRAF=null, windLast=0;
-function windSample(lat, lon){
+/* This loop runs ~10,000 times per frame, so it must not allocate: sampling
+   writes into one scratch pair and positions are computed with inline trig
+   instead of world.getCoords(), which builds a fresh Vector3 per call
+   (measured here: 90k getCoords = 32.6 ms, 90k inline conversions = 5.6 ms). */
+const _UV=[0,0];
+function windSample(lat, lon, out){
   const h=WINDJ.header, F=WINDJ.frames[tIdx];
   const fx=(((lon%360)+360)%360)/h.dx;
   let fy=(h.la1-lat)/h.dy; fy=Math.max(0, Math.min(h.ny-1.001, fy));
-  const x0=Math.floor(fx)%h.nx, x1=(x0+1)%h.nx, y0=Math.floor(fy), y1=Math.min(y0+1, h.ny-1);
-  const tx=fx-Math.floor(fx), ty=fy-y0, idx=(x,y)=>y*h.nx+x, L=(a,b,t)=>a+(b-a)*t;
-  return [L(L(F.u[idx(x0,y0)],F.u[idx(x1,y0)],tx), L(F.u[idx(x0,y1)],F.u[idx(x1,y1)],tx), ty),
-          L(L(F.v[idx(x0,y0)],F.v[idx(x1,y0)],tx), L(F.v[idx(x0,y1)],F.v[idx(x1,y1)],tx), ty)];
+  const nx=h.nx, x0=Math.floor(fx)%nx, x1=(x0+1)%nx, y0=Math.floor(fy), y1=Math.min(y0+1, h.ny-1);
+  const tx=fx-Math.floor(fx), ty=fy-y0;
+  const i00=y0*nx+x0, i10=y0*nx+x1, i01=y1*nx+x0, i11=y1*nx+x1;
+  const u=F.u, v=F.v, ua=u[i00]+(u[i10]-u[i00])*tx, ub=u[i01]+(u[i11]-u[i01])*tx;
+  const va=v[i00]+(v[i10]-v[i00])*tx, vb=v[i01]+(v[i11]-v[i01])*tx;
+  out[0]=ua+(ub-ua)*ty; out[1]=va+(vb-va)*ty;
+  return out;
 }
-const TRAIL=9;
+const TRAIL=9, GLOBE_R=100;   // three-globe's globe radius
+const _PA={x:0,y:0,z:0}, _PB={x:0,y:0,z:0};
+function xyz(lat, lng, alt, out){   // same projection as three-globe's getCoords
+  const phi=(90-lat)*Math.PI/180, theta=(90-lng)*Math.PI/180, r=GLOBE_R*(1+alt), sp=r*Math.sin(phi);
+  out.x=sp*Math.cos(theta); out.y=r*Math.cos(phi); out.z=sp*Math.sin(theta);
+  return out;
+}
 function windSpawn(p){
   p.lat=Math.asin(2*Math.random()-1)*180/Math.PI;
   p.lon=Math.random()*360-180;
   p.age=0; p.max=2.5+Math.random()*3.5;
-  const c=world.getCoords(p.lat, p.lon, 0.006); p.x=c.x; p.y=c.y; p.z=c.z;
+  xyz(p.lat, p.lon, 0.006, p);
 }
 function windObject(){
   if(windGroup) return windGroup;
@@ -597,29 +645,30 @@ function windStep(ts){
   let o=0;
   for(let i=0;i<WIND_N;i++){
     const p=windParts[i];
-    const [u,v]=windSample(p.lat, p.lon);
+    const uv=windSample(p.lat, p.lon, _UV), u=uv[0], v=uv[1];
     const sp=Math.hypot(u,v);
     p.lat+=v*WIND_K*dt;
     p.lon+=u*WIND_K*dt/Math.max(0.25, Math.cos(p.lat*Math.PI/180));
     p.age+=dt;
     if(p.age>p.max || Math.abs(p.lat)>88 || sp<0.3){ windSpawn(p); }
-    else { const c=world.getCoords(p.lat, p.lon, 0.006); p.x=c.x; p.y=c.y; p.z=c.z; }
+    else { xyz(p.lat, p.lon, 0.006, p); }
     // Trail: integrate BACKWARD from the head along the wind field, so every
     // streak is a true piece of the flow (~0.3 s of travel), not one frame of
     // motion — that is what makes the streaks long like Windy/Nullschool.
     let tla=p.lat, tlo=p.lon;
-    let prev=world.getCoords(tla, tlo, 0.006);
+    let prev=xyz(tla, tlo, 0.006, _PA), cur=_PB;
     const fade=0.30+0.70*Math.min(1, sp/10);
     for(let j=0;j<TRAIL-1;j++){
-      const [bu,bv]=windSample(tla, tlo);
+      const uv2=windSample(tla, tlo, _UV), bu=uv2[0], bv=uv2[1];
       tla-=bv*WIND_K*0.06;
       tlo-=bu*WIND_K*0.06/Math.max(0.25, Math.cos(tla*Math.PI/180));
-      const cur=world.getCoords(tla, tlo, 0.006);
+      xyz(tla, tlo, 0.006, cur);
       const g=(1-j/(TRAIL-1))*fade;
       pos[o]=cur.x; pos[o+1]=cur.y; pos[o+2]=cur.z; pos[o+3]=prev.x; pos[o+4]=prev.y; pos[o+5]=prev.z;
       col[o]=0; col[o+1]=0; col[o+2]=0;
       col[o+3]=0.80*g; col[o+4]=0.90*g; col[o+5]=g;
-      prev=cur; o+=6;
+      const swap=prev; prev=cur; cur=swap;   // reuse the two scratch objects
+      o+=6;
     }
   }
   windGeo.attributes.position.needsUpdate=true;
@@ -636,16 +685,30 @@ document.querySelectorAll('.wnd').forEach(b=> b.onclick=()=>{
   b.classList.add('on'); windOn = b.dataset.w==='on'; windKick(); redraw(); });
 
 loadCoastlines();
+// The wind file is ~5 MB; the model data is a few hundred KB. Loading it
+// separately means the cells and picking are live long before the wind lands.
 Promise.all([fetch('model_weights.json').then(r=>r.json()), fetch('region_stats.json').then(r=>r.json()), fetch('region_defaults.json').then(r=>r.json()),
   fetch('track_climatology.json').then(r=>r.json()).catch(()=>null),
   fetch('live_storms.json').then(r=>r.json()).catch(()=>null),
-  fetch('wind_frames.json').then(r=>r.json()).catch(()=>null)])
- .then(([w,s,d,t2,l2,w2])=>{ W=w; STATS=s; DEFS=d; TRACK=t2; LIVE=l2; WINDJ=w2;
-   if(WINDJ){ let best=0, bd=1e18; WINDJ.frames.forEach((f,i)=>{ const dd=Math.abs(frameMs(i)-Date.now()); if(dd<bd){bd=dd;best=i;} });
-     tIdx=best; document.getElementById('timebar').style.display='flex';
-     document.getElementById('tlabel').textContent=frameLabel(tIdx); }
+  fetch('era5_env.json').then(r=>r.json()).catch(()=>null)])
+ .then(([w,s,d,t2,l2,e2])=>{ W=w; STATS=s; DEFS=d; TRACK=t2; LIVE=l2; ENV=e2;
+   PTS_CACHE=null; PTS_KEY='';   // data arrived after any early empty build
    renderLive(); applyCell(); redraw(); windKick(); })
  .catch(e=>{ document.getElementById('locread').textContent='JSON files missing — they must sit next to index.html.'; });
+fetch('wind_frames.json').then(r=>r.json()).then(w2=>{
+  WINDJ=w2;
+  if(!WINDJ || !WINDJ.frames || !WINDJ.frames.length) return;
+  let best=0, bd=1e18; WINDJ.frames.forEach((f,i)=>{ const dd=Math.abs(frameMs(i)-Date.now()); if(dd<bd){bd=dd;best=i;} });
+  tIdx=best;
+  document.getElementById('timebar').style.display='flex';
+  document.getElementById('tlabel').textContent=frameLabel(tIdx);
+  // add the flow to the existing custom layer instead of rebuilding 183 cells
+  if(windOn){
+    if(shape==='cells') world.customLayerData(world.customLayerData().concat([WIND_DATUM]));
+    else redraw();   // other shapes must rebuild their own geometry anyway
+  }
+  windKick();
+}).catch(()=>{});
 </script>
 </body>
 </html>
