@@ -1031,7 +1031,10 @@ document.querySelectorAll('.wnd').forEach(b=> b.onclick=()=>{
 loadCoastlines();
 // The wind file is ~5 MB; the model data is a few hundred KB. Loading it
 // separately means the cells and picking are live long before the wind lands.
-const getJSON=f=>fetch(f).then(r=>r.ok?r.json():null).catch(()=>null);
+// no-cache: these files are replaced on every deploy, and a browser holding an
+// old copy is indistinguishable from a missing one - the loader would silently
+// run with empty climatology instead of the data that is already published.
+const getJSON=f=>fetch(f,{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null);
 // model_weights.json is the shipped 110-145 E fit; the _wp/_east files are the
 // widened pair. Whatever is absent is skipped, so the page runs on whichever
 // weights are present - one file alone still behaves exactly as before.
