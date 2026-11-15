@@ -32,6 +32,8 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The exported model data lives at the repo root; the baseline sits beside this file.
+ROOT = HERE if os.path.exists(os.path.join(HERE, "model_weights.json")) else os.path.dirname(HERE)
 CORRIDOR = (5.0, 40.0)          # training corridor latitude bounds (README: 5-40 N, 110-145 E)
 DEFAULT_TOLERANCE_PP = 3.0      # allowed drift of the alarm rate, in percentage points
 
@@ -289,9 +291,9 @@ def run(w, defs, stats, args):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Stress-test the shipped RI model and track its alarm rate.")
-    ap.add_argument("--weights", default=os.path.join(HERE, "model_weights.json"))
-    ap.add_argument("--defaults", default=os.path.join(HERE, "region_defaults.json"))
-    ap.add_argument("--stats", default=os.path.join(HERE, "region_stats.json"))
+    ap.add_argument("--weights", default=os.path.join(ROOT, "model_weights.json"))
+    ap.add_argument("--defaults", default=os.path.join(ROOT, "region_defaults.json"))
+    ap.add_argument("--stats", default=os.path.join(ROOT, "region_stats.json"))
     ap.add_argument("--baseline", default=os.path.join(HERE, "stress_baseline.json"))
     ap.add_argument("--update-baseline", action="store_true",
                     help="write the current numbers to the baseline file and exit 0")
