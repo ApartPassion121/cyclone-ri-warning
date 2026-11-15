@@ -74,8 +74,12 @@ try:
     while tcur < cutoff:
         want.append(tcur.strftime('%Y-%m-%dT%H:00')); tcur += timedelta(hours=6)
     tcur = cutoff.replace(hour=(cutoff.hour//3)*3)
+    seen = set(want)
     while tcur <= now+timedelta(hours=48):
-        want.append(tcur.strftime('%Y-%m-%dT%H:00')); tcur += timedelta(hours=3)
+        w = tcur.strftime('%Y-%m-%dT%H:00')
+        if w not in seen:   # the 3 h grid starts on a 6 h time when cutoff is off-grid
+            want.append(w); seen.add(w)
+        tcur += timedelta(hours=3)
     U = {w: [None]*len(pts) for w in want}; V = {w: [None]*len(pts) for w in want}
     # MSLP on every other point (5 deg): the cursor readout needs the smooth
     # field, not 2.5 deg detail, and a full-resolution array would add ~3 MB to
