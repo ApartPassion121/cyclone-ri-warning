@@ -77,6 +77,11 @@
   #tlabel { color:#cfe3cf; }
   @media (max-width:820px){ #timebar { bottom:12px; max-width:94vw; } }
   #tlabel .tag { color:#697d87; }
+  /* measurement under the pointer: follows the cursor, never takes the click */
+  #cursorread { position:fixed; left:0; top:0; z-index:6; display:none; pointer-events:none;
+    padding:4px 7px; background:rgba(4,9,13,.92); border:1px solid #2a3a44; color:#dfe9ee;
+    line-height:1.55; white-space:nowrap; }
+  #cursorread .w { color:#cfe3cf; } #cursorread .p { color:#ffc07a; } #cursorread .st { color:#ffd9a8; }
   .scene-tooltip { font:11px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#dfe9ee; background:rgba(4,9,13,.92); border:1px solid #2a3a44; padding:3px 6px; pointer-events:none; white-space:nowrap; }
   .scene-tooltip:empty { display:none; }
   @media (max-width:820px){ #panel{ left:12px; width:auto; max-height:48vh; } #hud p{display:none;} #ctl{max-width:none; bottom:52px;} }
@@ -142,6 +147,7 @@
   </div>
 </div>
 <div id="open">STORM</div>
+<div id="cursorread"></div>
 
 <script>
 let W=null, STATS=null, DEFS=null, TRACK=null, LIVE=null, ENV=null, liveTrack=null;
@@ -737,6 +743,7 @@ function setTime(i){
   tIdx=Math.max(0, Math.min(WINDJ.frames.length-1, i));
   document.getElementById('tlabel').textContent=frameLabel(tIdx);
   renderLive(); updateLiveLayers(); windKick();
+  cursorRead();   // a new frame changes the measurement under a still pointer
 }
 function setPlaying(on){
   const btn=document.getElementById('tplay');
@@ -756,6 +763,66 @@ document.getElementById('tnext').onclick=()=>{ setPlaying(false); stepHours(3); 
 document.getElementById('tnow').onclick=()=>{ if(!WINDJ) return;
   let best=0, bd=1e18; WINDJ.frames.forEach((f,i)=>{ const d=Math.abs(frameMs(i)-Date.now()); if(d<bd){bd=d;best=i;} });
   setTime(best); };
+
+/* ---------- measurement under the pointer ----------
+   The pointer is projected onto the globe with toGlobeCoords (the same call the
+   clicks use), then the particles' own bilinear sampler gives the wind for the
+   frame on screen, so the number always agrees with the streaks beside it.
+   Pressure is MSLP from the frame when the feed carries it (coarse grid - see
+   update_live.py) and a storm's own report when the pointer is over one. */
+const KT=1.94384;   // m/s -> kt, the unit the rest of the page uses
+let curAt=null, cursorEl=null;
+const _CUV=[0,0];
+function dirName(deg){ return ['N','NE','E','SE','S','SW','W','NW'][Math.round(((deg%360)+360)%360/45)%8]; }
+function kmBetween(a,b,c,d){
+  const r=Math.PI/180, dLat=(c-a)*r, dLon=(d-b)*r;
+  const h=Math.sin(dLat/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dLon/2)**2;
+  return 12742*Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function sampleP(lat,lon){   // kept out of windSample: 10k particles must not pay for a value only the cursor reads
+  const h=WINDJ.header.p, P=WINDJ.frames[tIdx].p;
+  if(!h || !P) return null;
+  const fx=(((lon%360)+360)%360)/h.dx;
+  let fy=(h.la1-lat)/h.dy; fy=Math.max(0, Math.min(h.ny-1.001, fy));
+  const nx=h.nx, x0=Math.floor(fx)%nx, x1=(x0+1)%nx, y0=Math.floor(fy), y1=Math.min(y0+1, h.ny-1);
+  const tx=fx-Math.floor(fx), ty=fy-y0;
+  const q=[P[y0*nx+x0], P[y0*nx+x1], P[y1*nx+x0], P[y1*nx+x1]];
+  if(!q.every(Number.isFinite)) return null;   // a missing cell must read "no data", not 0 hPa
+  const a=q[0]+(q[1]-q[0])*tx, b=q[2]+(q[3]-q[2])*tx;
+  return a+(b-a)*ty;
+}
+function nearestStorm(lat,lng){   // the only live pressure that is not a coarse grid cell
+  let best=null, bd=1e9;
+  for(const st of (LIVE && LIVE.storms) || []){
+    const ep=effPos(st), pr=ep.pres!=null ? ep.pres : st.pres_hpa;
+    if(!Number.isFinite(pr)) continue;
+    const d=kmBetween(lat,lng,ep.lat,ep.lon);
+    if(d<bd){ bd=d; best={st,ep,pr,d}; }
+  }
+  return best && best.d<=250 ? best : null;   // 250 km: about two 2.5 deg cells
+}
+function cursorRead(){
+  const el=cursorEl||(cursorEl=document.getElementById('cursorread'));
+  const g=(curAt && WINDJ && world.toGlobeCoords(curAt.x, curAt.y)) || null;
+  if(!g){ el.style.display='none'; return; }
+  const uv=windSample(g.lat, g.lng, _CUV), kt=Math.round(Math.hypot(uv[0],uv[1])*KT);
+  const from=(270-Math.atan2(uv[1],uv[0])*180/Math.PI+360)%360;
+  const p=sampleP(g.lat,g.lng), st=nearestStorm(g.lat,g.lng);
+  let html=`${fmtLat(g.lat)} ${fmtLng(g.lng)}<br>wind <span class="w">${kt} kt ${dirName(from)}</span>`;
+  if(Number.isFinite(p)) html+=` · <span class="p">${Math.round(p)} hPa</span>`;
+  if(st) html+=`<br><span class="st">◉ ${st.st.name}</span> ${Math.round(st.d)} km · ${st.ep.wind!=null?st.ep.wind:st.st.wind_kt} kt · ${st.pr} hPa`;
+  el.innerHTML=html; el.style.display='block';
+  const w=el.offsetWidth, h=el.offsetHeight;   // flip away from the window edge
+  const x=curAt.x+16+w>innerWidth ? curAt.x-w-14 : curAt.x+16;
+  const y=curAt.y+16+h>innerHeight ? curAt.y-h-14 : curAt.y+16;
+  el.style.transform=`translate(${Math.round(x)}px,${Math.round(y)}px)`;
+}
+addEventListener('pointermove', e=>{
+  const c=document.querySelector('#globe canvas');
+  curAt=(c && e.target===c) ? {x:e.clientX, y:e.clientY} : null;
+  cursorRead();
+});
+addEventListener('pointerout', e=>{ if(!e.relatedTarget){ curAt=null; cursorRead(); } });
 
 /* ---------- wind flow (whole globe, Open-Meteo 10 m wind via wind_frames.json) ---------- */
 let WINDJ=null, windOn=true;
