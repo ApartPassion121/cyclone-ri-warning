@@ -100,7 +100,7 @@ The page is served from the repo root by GitHub Pages, so `index.html` and every
 - `tools/stress_test.py` + `tools/stress_baseline.json` — the model stress test (sweeps, custom storms, numerical extremes, dataset alarm rate) and the tracked alarm-rate baseline it is compared against; exits non-zero when a check fails or the alarm rate drifts.
 - `tools/domain_census.py` — how many storms, records, RI points and cells each candidate domain adds, and how different their RI base rates are; the measurement that sized the widened domains.
 - `tools/kaggle_patch_domain.py` — applies the domain-widening edits to the model notebook (domain mask, cyclic longitude, SST subset, `_wp`/`_east` exports), refusing to write if an anchor or a code cell does not check out.
-- `tools/ri_domain_model.py` — retrains one domain outside the notebook, with the same conventions as the exported weights, and writes `model_weights_<domain>.json` plus its two climatology files.
+- `tools/ri_domain_model.py` — retrains one domain outside the notebook, with the same conventions as the exported weights, and writes `model_weights_<domain>.json` plus its two climatology files (needs scikit-learn, pandas, xarray and netCDF4).
 - `cyclone_ri_warning.ipynb` — the model notebook (Kaggle): data, features, baselines, models, the ERA5 experiment (Step 15), the track comparison (Step 16), live mode (Step 17) and the wind frames + time replay (Step 18).
 
 ## Sources

@@ -158,10 +158,7 @@ def main():
         if "features = [" in t and '"DWIND_24"' in t:
             if "LON_SIN" not in t:
                 a, b = span(t, r"features = \[", r"\]", "features list")
-                if "DPRES_24" in t and "LON_SIN" not in t:
-                    t = t[:a] + CYCLIC_BLOCK + FEATURES_LINE + t[b:]
-                else:
-                    t = t[:a] + FEATURES_LINE + t[b:]
+                t = t[:a] + CYCLIC_BLOCK + FEATURES_LINE + t[b:]
             set_source(c, t)
             report.append("features: LON replaced by LON_SIN/LON_COS")
             done = True

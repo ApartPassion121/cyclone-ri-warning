@@ -1,6 +1,10 @@
-# Regenerates live_storms.json + track_climatology is static (from the notebook).
+# Regenerates live_storms.json and wind_frames.json; track_climatology.json is
+# static (exported by the model notebook).
 # Run by .github/workflows/live.yml every 6 hours. Source: IBTrACS ACTIVE (NOAA NCEI).
 import pandas as pd, numpy as np, json, math, urllib.request, io, os
+# This file lives in tools/; the JSON it reads and writes sits at the repo root.
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def at(name): return os.path.join(ROOT, name)
 URL = 'https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r01/access/csv/ibtracs.ACTIVE.list.v04r01.csv'
 raw = urllib.request.urlopen(URL, timeout=120).read().decode('utf-8', 'replace')
 df = pd.read_csv(io.StringIO(raw), low_memory=False)
@@ -9,7 +13,7 @@ for c in ['LAT','LON','WMO_WIND','TOKYO_WIND','USA_WIND','WMO_PRES','TOKYO_PRES'
     if c in df.columns: df[c] = pd.to_numeric(df[c], errors='coerce')
 df['WIND'] = df['WMO_WIND'].combine_first(df['TOKYO_WIND']).combine_first(df['USA_WIND'])
 df['PRES'] = df['WMO_PRES'].combine_first(df['TOKYO_PRES']).combine_first(df['USA_PRES'])
-W = json.load(open('model_weights.json')); D = json.load(open('region_defaults.json')); T = json.load(open('track_climatology.json'))
+W = json.load(open(at('model_weights.json'))); D = json.load(open(at('region_defaults.json'))); T = json.load(open(at('track_climatology.json')))
 def predict(f):
     vals = [(f[ft]-W['scaler_mean'][i])/W['scaler_scale'][i] for i, ft in enumerate(W['features'])]
     zs = {c: sum(vals[i]*W['coef'][ci][i] for i in range(len(vals)))+W['intercept'][ci] for ci, c in enumerate(W['classes'])}
@@ -44,7 +48,7 @@ for sid, g in df[df['BASIN']=='WP'].groupby('SID'):
         'features': f, 'prediction': predict(f),
         'track_24h': {'dLat': round(bdlat,2), 'dLon': round(bdlon,2), 'lat': round(float(r['LAT'])+bdlat,2), 'lon': round(float(r['LON'])+bdlon,2),
                       'method': 'blend of storm motion + typical path (test mean error 358 km)'}})
-json.dump(out, open('live_storms.json','w'), indent=1)
+json.dump(out, open(at('live_storms.json'),'w'), indent=1)
 print('storms:', [s['name'] for s in out['storms']])
 
 # --- wind_frames.json: whole-globe 10 m wind, 3-hourly frames -24 h..+48 h ---
@@ -120,7 +124,7 @@ try:
                      'p': {'nx': PNX, 'ny': PNY, 'lo1': 0, 'la1': 87.5, 'dx': STEP*PS, 'dy': STEP*PS,
                            'source': 'Open-Meteo MSLP, every 2nd grid point'}},
           'frames': frames}
-    json.dump(wf, open('wind_frames.json', 'w'), separators=(',', ':'))
+    json.dump(wf, open(at('wind_frames.json'), 'w'), separators=(',', ':'))
     print('wind_frames.json written:', len(frames), 'frames')
 except Exception as e:
     print('wind update skipped:', e)

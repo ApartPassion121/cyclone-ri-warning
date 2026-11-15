@@ -138,10 +138,13 @@ def report(name, pred, true):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--domain", choices=sorted(DOMAINS), default="wp")
-    ap.add_argument("--ib", default="/tmp/ibtracs_since1980.csv")
+    ap.add_argument("--ib", default="ibtracs_since1980.list.v04r01.csv",
+                    help="IBTrACS CSV (the since1980 export is enough)")
     ap.add_argument("--out", default="exported")
     ap.add_argument("--threshold", type=float, default=0.25)
     args = ap.parse_args()
+    if not os.path.exists(args.ib):
+        ap.error(f"IBTrACS CSV not found: {args.ib} — pass --ib /path/to/ibtracs.since1980.list.v04r01.csv")
 
     dom = DOMAINS[args.domain]
     os.makedirs(args.out, exist_ok=True)
