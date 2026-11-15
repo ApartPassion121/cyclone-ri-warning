@@ -26,6 +26,7 @@
   .lnk.on { color:#fff; background:#33434d; }
   select { background:#0a0f12; color:#e8eef1; border:1px solid #33434d; font:inherit; font-size:11px; padding:1px; }
   #scalebar { width:180px; height:6px; margin-top:3px; background:linear-gradient(90deg,#2b83ba,#5ab4ac,#a6dba0,#fee08b,#fdae61,#d7191c); }
+  #scalecap { color:#4d5f69; margin-top:6px; line-height:1.45; }
   #scalevals { display:flex; justify-content:space-between; width:180px; color:#697d87; font-size:9px; margin-top:2px; }
   #panel { right:12px; top:12px; width:248px; padding:8px 10px; max-height:calc(100vh - 24px); overflow-y:auto; }
   #panel .hd { display:flex; justify-content:space-between; align-items:baseline; }
@@ -34,6 +35,8 @@
   #hide:hover { color:#fff; }
   #locread { color:#8fa3ad; line-height:1.5; margin:5px 0 7px; }
   #locread b { color:#e8eef1; font-weight:500; }
+  #monthnote { color:#4d5f69; line-height:1.5; margin:-4px 0 7px; display:none; }
+  #monthnote b { color:#8fa3ad; font-weight:500; }
   #live { margin:0 0 7px; border:1px solid #4a3410; background:rgba(122,72,8,.13); padding:6px 7px; line-height:1.55; display:none; }
   #live .lh { color:#ffb35c; letter-spacing:.09em; font-size:10px; }
   #live .lstorm { cursor:pointer; color:#ffd9a8; }
@@ -103,6 +106,7 @@
   <div><span class="k">Shape</span><span class="lnk shp on" data-shp="cells">Cells</span> <span class="lnk shp" data-shp="field">Field</span> <span class="lnk shp" data-shp="columns">Columns</span> <span class="lnk shp" data-shp="dots">Dots</span></div>
   <div><span class="k">Wind</span><span class="lnk wnd on" data-w="on">Flow</span> <span class="lnk wnd" data-w="off">Off</span></div>
   <div><span class="k">Month</span><select id="month"></select></div>
+  <div id="scalecap"></div>
   <div id="scalebar"></div>
   <div id="scalevals"><span id="sv1">0%</span><span id="sv2"></span><span id="sv3">8%+</span></div>
   <div class="hint">click the globe to select a cell · hover for history · orange = live storm</div>
@@ -119,6 +123,7 @@
   <div id="body">
     <div id="live"></div>
     <div id="locread">Click the globe.</div>
+    <div id="monthnote"></div>
     <div class="grid" id="form"></div>
     <button id="predict">RUN</button>
     <div id="result">
@@ -148,7 +153,8 @@ const form=document.getElementById('form');
 FIELDS.forEach(([k,l])=>{ const d=document.createElement('div'); d.className='fld';
   d.innerHTML=`<label>${l}</label><input id="in-${k}" type="number" step="any">`; form.appendChild(d); });
 const msel=document.getElementById('month');
-["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].forEach((n,i)=>{
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+MONTHS.forEach((n,i)=>{
   const o=document.createElement('option'); o.value=i+1; o.textContent=n; if(i+1===month)o.selected=true; msel.appendChild(o); });
 msel.onchange=()=>{ month=+msel.value; liveTrack=null; applyCell(); redraw(); };
 document.getElementById('hide').onclick=()=>{ document.getElementById('panel').style.display='none'; document.getElementById('open').style.display='block'; };
@@ -494,6 +500,16 @@ function setScale(){
   const[a,c]= layer==='sst' ? ['19C','31C'] : ['0%','8%+'];
   sv1.textContent=a; sv3.textContent=c;
   document.getElementById('scalebar').style.opacity = layer==='off' ? .2 : 1;
+  scaleCaption();
+}
+/* The month selector changes nothing on the RI layer, which is the default one:
+   without a caption that reads as a broken control. Name the layer and its scope. */
+function scaleCaption(){
+  const el=document.getElementById('scalecap'); if(!el) return;
+  if(layer==='off'){ el.textContent='no layer'; return; }
+  if(layer==='ri'){ el.textContent='RI history · all season · not month-specific'; return; }
+  const have=cells().length, all=STATS ? Object.keys(STATS).length : 0;
+  el.textContent=`SST · ${have} of ${all} cells have ${MONTHS[month-1]} data`;
 }
 
 function cellKey(lat,lng){ return (Math.floor(lat/2.5)*2.5).toFixed(1)+","+(Math.floor(lng/2.5)*2.5).toFixed(1); }
@@ -514,22 +530,44 @@ function pick(lat,lng){
   const p=world.pointOfView();
   world.pointOfView({lat, lng, altitude:Math.min(p.altitude,1.5)}, 900);
 }
-let DEFS_IDX=null;
+let DEFS_IDX=null, DEFS_USED=0;
 /* Several out-of-season cell+month combinations have no storms, so they have no
    monthly row. Fall back to that cell's nearest month instead of a global
    constant, so the prefill stays typical *for the location*. */
 function defsFor(cell, m){
   if(!DEFS) return null;
   const exact=DEFS[cell+','+m];
-  if(exact) return exact;
+  if(exact){ DEFS_USED=m; return exact; }
   if(!DEFS_IDX){
     DEFS_IDX={};
     for(const k of Object.keys(DEFS)){ const p=k.split(','); const c=p[0]+','+p[1]; (DEFS_IDX[c]=DEFS_IDX[c]||[]).push(+p[2]); }
   }
   const ms=DEFS_IDX[cell]; if(!ms || !ms.length) return null;
   let best=null, bd=99;
-  for(const mm of ms){ const dd=Math.abs(mm-m); const d=Math.min(dd, 12-dd); if(d<bd){ bd=d; best=mm; } }
+  for(const mm of ms){ const dd=Math.abs(mm-m); const d=Math.min(dd, 12-dd);   if(d<bd){ bd=d; best=mm; } }
+  DEFS_USED=best;
   return DEFS[cell+','+best] || null;
+}
+/* The month selector drives five things (SST layer, prefill, ERA5 rows, 24 h
+   climatology, the model's MONTH feature) but the RI layer is all-season, so
+   say which of them the current cell+month actually has. */
+let SEASON_TOT=null;
+function monthNote(d){
+  const el=document.getElementById('monthnote'); if(!el) return;
+  const nm=MONTHS[month-1], parts=[];
+  if(TRACK){
+    const [a,b]=sel.cell.split(',').map(Number);
+    const ck=(a+1.25).toFixed(2)+','+(b+1.25).toFixed(2);
+    if(!SEASON_TOT){
+      SEASON_TOT={};
+      for(const k of Object.keys(TRACK)){ const p=k.split(','); const c=p[0]+','+p[1]; SEASON_TOT[c]=(SEASON_TOT[c]||0)+TRACK[k].n; }
+    }
+    const tot=SEASON_TOT[ck]||0, n=TRACK[ck+','+month] ? TRACK[ck+','+month].n : 0;
+    if(tot) parts.push(`<b>${nm}</b> · ${n} of ${tot} track samples in this cell`);
+  }
+  if(d && DEFS_USED && DEFS_USED!==month) parts.push(`prefill from ${MONTHS[DEFS_USED-1]} (no ${nm} storms here)`);
+  el.innerHTML = parts.join(' <span style="color:#324149">·</span> ');
+  el.style.display = parts.length ? 'block' : 'none';
 }
 function applyCell(){
   const s=STATS && STATS[sel.cell], d=defsFor(sel.cell, month);
@@ -539,6 +577,7 @@ function applyCell(){
   const fb={WIND:65,PRES:990,DWIND_24:5,DWIND_12:5,DWIND_6:0,DPRES_6:-2,DPRES_24:-5,SST:29,DIST2LAND:300,SPEED:8};
   FIELDS.forEach(([k])=>{ document.getElementById('in-'+k).value = d && d[k]!==undefined ? d[k] : fb[k]; });
   conds();
+  monthNote(d);
 }
 /* The six classic formation conditions. The first three are model inputs; the
    last three come from the ERA5 climatology (typical value for this cell and
