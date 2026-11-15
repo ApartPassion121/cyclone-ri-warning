@@ -32,6 +32,13 @@
   #hide:hover { color:#fff; }
   #locread { color:#8fa3ad; line-height:1.5; margin:5px 0 7px; }
   #locread b { color:#e8eef1; font-weight:500; }
+  #trackread { color:#8fa3ad; line-height:1.5; margin:0 0 7px; }
+  #trackread b { color:#a8cbe4; font-weight:500; }
+  #live { margin:0 0 7px; border:1px solid #4a3410; background:rgba(122,72,8,.13); padding:6px 7px; line-height:1.55; display:none; }
+  #live .lh { color:#ffb35c; letter-spacing:.09em; font-size:10px; }
+  #live .lstorm { cursor:pointer; color:#ffd9a8; }
+  #live .lstorm:hover { color:#fff; text-decoration:underline; }
+  #live .lm { color:#8fa3ad; }
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:5px 8px; }
   .fld label { display:block; font-size:9px; color:#697d87; letter-spacing:.06em; margin-bottom:1px; }
   .fld input { width:100%; background:#0a0f12; border:1px solid #26333b; color:#e8eef1; padding:3px 5px; font:inherit; font-size:11px; }
@@ -71,14 +78,16 @@
   <div><span class="k">Month</span><select id="month"></select></div>
   <div id="scalebar"></div>
   <div id="scalevals"><span id="sv1">0%</span><span id="sv2"></span><span id="sv3">8%+</span></div>
-  <div class="hint">click the globe to select a cell · hover a cell for its history</div>
-  <div style="color:#4d5f69">NOAA IBTrACS · NOAA OISST · not an official forecast</div>
+  <div class="hint">click the globe to select a cell · hover for history · orange = live storm</div>
+  <div style="color:#4d5f69">NOAA IBTrACS · NOAA OISST · ERA5 (Copernicus C3S) · not an official forecast</div>
 </div>
 
 <div class="box" id="panel">
   <div class="hd"><h2>STORM</h2><span id="hide">HIDE</span></div>
   <div id="body">
+    <div id="live"></div>
     <div id="locread">Click the globe in the corridor (5–40°N, 110–145°E).</div>
+    <div id="trackread"></div>
     <div class="grid" id="form"></div>
     <button id="predict">RUN</button>
     <div id="result">
@@ -93,7 +102,8 @@
 <div id="open">STORM</div>
 
 <script>
-let W=null, STATS=null, DEFS=null;
+let W=null, STATS=null, DEFS=null, ENV=null, TRACK=null, LIVE=null, liveTrack=null;
+const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 let layer='ri', shape='cells', month=new Date().getMonth()+1;
 let sel={lat:16.25, lng:127.5, cell:"15.0,127.5"};
 const FIELDS=[
@@ -108,7 +118,7 @@ FIELDS.forEach(([k,l])=>{ const d=document.createElement('div'); d.className='fl
 const msel=document.getElementById('month');
 ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].forEach((n,i)=>{
   const o=document.createElement('option'); o.value=i+1; o.textContent=n; if(i+1===month)o.selected=true; msel.appendChild(o); });
-msel.onchange=()=>{ month=+msel.value; applyCell(); redraw(); };
+msel.onchange=()=>{ month=+msel.value; liveTrack=null; applyCell(); redraw(); };
 document.getElementById('hide').onclick=()=>{ document.getElementById('panel').style.display='none'; document.getElementById('open').style.display='block'; };
 document.getElementById('open').onclick=()=>{ document.getElementById('panel').style.display='block'; document.getElementById('open').style.display='none'; };
 
@@ -295,6 +305,81 @@ function dotOf(c){
 }
 function fieldOf(c){ return {lat:c.lat,lng:c.lng,w:0.1+0.9*c.t}; }
 
+/* ---------- live storms (IBTrACS ACTIVE via live_storms.json) ---------- */
+function livePoints(){
+  if(!LIVE || !LIVE.storms) return [];
+  return LIVE.storms.map(st=>({lat:st.lat, lng:st.lon, color:'#ff7847', r:0.55, alt:0.02,
+    tip:`${st.name} · ${st.wind_kt} kt · ${st.pres_hpa} hPa · ${st.time_utc} UTC`}));
+}
+function liveLabels(){
+  if(!LIVE || !LIVE.storms) return [];
+  return LIVE.storms.map(st=>({lat:st.lat, lng:st.lon, label:'● '+st.name.toUpperCase()}));
+}
+function renderLive(){
+  const box=document.getElementById('live');
+  if(!LIVE){ box.style.display='none'; return; }
+  box.style.display='block';
+  if(!LIVE.storms || !LIVE.storms.length){
+    box.innerHTML=`<span class="lh">LIVE</span> <span class="lm">no active storms in the West Pacific · IBTrACS ACTIVE · checked ${LIVE.generated_utc||''} UTC</span>`;
+    return;
+  }
+  const gen=Date.parse((LIVE.generated_utc||'').replace(' ','T')+'Z');
+  box.innerHTML = LIVE.storms.map((st,i)=>{
+    const ageH=(gen-Date.parse(st.time_utc.replace(' ','T')+'Z'))/36e5;
+    const badge = ageH<=36 ? 'LIVE' : 'LAST STORM';
+    return `<div><span class="lh">● ${badge}</span> <span class="lstorm" data-i="${i}">${st.name}</span> <span class="lm">${st.wind_kt} kt · ${st.pres_hpa} hPa · ${st.time_utc} UTC</span></div>
+    <div class="lm">model: RI ${st.prediction.RI}% · STEADY ${st.prediction.STEADY}% · WEAK ${st.prediction.WEAKEN}% — tap the name to load it</div>`;
+  }).join('');
+  box.querySelectorAll('.lstorm').forEach(el=> el.onclick=()=>loadLive(+el.dataset.i));
+}
+function loadLive(i){
+  const st=LIVE.storms[i]; if(!st) return;
+  sel.lat=st.lat; sel.lng=st.lon; sel.cell=cellKey(st.lat, st.lon);
+  month=st.features.MONTH; msel.value=month;
+  liveTrack={fromLat:st.lat, fromLng:st.lon, lat:st.track_24h.lat, lng:st.track_24h.lon};
+  applyCell();
+  FIELDS.forEach(([k])=>{ if(st.features[k]!==undefined) document.getElementById('in-'+k).value=st.features[k]; });
+  document.getElementById('trackread').innerHTML =
+    `<b>${st.name} track</b> · blend of its own motion + typical path: ${st.track_24h.dLat>=0?'+':''}${st.track_24h.dLat}° lat, ${st.track_24h.dLon>=0?'+':''}${st.track_24h.dLon}° lon in 24 h · method's avg error ≈358 km`;
+  redraw(); predict();
+  world.pointOfView({lat:st.lat, lng:st.lon, altitude:1.5}, 900);
+}
+
+/* ---------- track forecast (typical 24 h movement for the cell + month) ---------- */
+function trackEntry(){
+  if(!TRACK) return null;
+  const [a,b]=sel.cell.split(',').map(Number);
+  return TRACK[(a+1.25).toFixed(2)+','+(b+1.25).toFixed(2)+','+month] || null;
+}
+function compass(dLat,dLon){
+  const dirs=['E','NE','N','NW','W','SW','S','SE'];
+  const ang=Math.atan2(dLat,dLon)*180/Math.PI;
+  return dirs[Math.round(((ang+360)%360)/45)%8];
+}
+function trackEnd(){
+  const t=trackEntry(); if(!t || t.n<5) return null;
+  const [a,b]=sel.cell.split(',').map(Number);
+  return {lat:a+1.25+t.dLat, lng:b+1.25+t.dLon, fromLat:a+1.25, fromLng:b+1.25, t};
+}
+function trackPaths(){
+  if(liveTrack){
+    const pts=[];
+    for(let i=0;i<=8;i++) pts.push([liveTrack.fromLat+(liveTrack.lat-liveTrack.fromLat)*i/8, liveTrack.fromLng+(liveTrack.lng-liveTrack.fromLng)*i/8]);
+    return [P(pts,'#ffb35c',2.2,0.01)];
+  }
+  const e=trackEnd(); if(!e) return [];
+  const pts=[];
+  for(let i=0;i<=8;i++) pts.push([e.fromLat+(e.lat-e.fromLat)*i/8, e.fromLng+(e.lng-e.fromLng)*i/8]);
+  return [P(pts,'#7fb6d9',2.2,0.01)];
+}
+function trackPoint(){
+  if(liveTrack) return {lat:liveTrack.lat, lng:liveTrack.lng, color:'#ffb35c', r:0.3, alt:0.012,
+    tip:'forecast position 24 h later (blend method)'};
+  const e=trackEnd(); if(!e) return null;
+  return {lat:e.lat, lng:e.lng, color:'#8fd0ff', r:0.3, alt:0.012,
+    tip:`typical position 24 h later · based on ${e.t.n} past storm points`};
+}
+
 /* ---------- selection marker ---------- */
 function markerPoint(){
   return {lat:sel.lat,lng:sel.lng,color:'#ffc07a',r:0.14,alt:0.078,
@@ -312,13 +397,15 @@ function selLabel(){
 function redraw(){
   const cs=cells();
   const pts=(shape==='columns'||shape==='dots') ? cs.map(dotOf) : [];
-  world.pointsData(pts.concat([markerPoint()]));
+  const tp=trackPoint();
+  world.pointsData(pts.concat(tp ? [markerPoint(), tp] : [markerPoint()], livePoints()));
   world.customLayerData(shape==='cells' ? cs.map(c=>({lat:c.lat, lng:c.lng, color:washColor(c.t,0.2)})) : []);
   world.polygonsData([]);
   world.heatmapsData(shape==='field' ? [cs.map(fieldOf)] : []);
-  world.ringsData([{lat:sel.lat,lng:sel.lng,color:['rgba(255,198,138,0.8)','rgba(255,198,138,0)']}]);
-  world.labelsData([{lat:sel.lat,lng:sel.lng,label:selLabel()}]);
-  world.pathsData(staticPaths().concat(crossPaths()));
+  world.ringsData([{lat:sel.lat,lng:sel.lng,color:['rgba(255,198,138,0.8)','rgba(255,198,138,0)']}]
+    .concat((LIVE&&LIVE.storms?LIVE.storms:[]).map(st=>({lat:st.lat,lng:st.lon,color:['rgba(255,120,71,0.85)','rgba(255,120,71,0)']}))));
+  world.labelsData([{lat:sel.lat,lng:sel.lng,label:selLabel()}].concat(liveLabels()));
+  world.pathsData(staticPaths().concat(crossPaths(), trackPaths()));
   setScale();
 }
 function setScale(){
@@ -329,6 +416,7 @@ function setScale(){
 
 function cellKey(lat,lng){ return (Math.floor(lat/2.5)*2.5).toFixed(1)+","+(Math.floor(lng/2.5)*2.5).toFixed(1); }
 function pick(lat,lng){
+  liveTrack=null;
   sel.lat=lat; sel.lng=lng; sel.cell=cellKey(lat,lng); applyCell(); redraw();
   const p=world.pointOfView();
   world.pointOfView({lat, lng, altitude:Math.min(p.altitude,1.5)}, 900);
@@ -339,6 +427,10 @@ function applyCell(){
   lr.innerHTML = s
     ? `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · ${s.storms} storms since 2000 · RI ${s.ri_pct}% · weak ${s.weaken_pct}%`
     : `<b>${sel.lat.toFixed(1)}°N ${sel.lng.toFixed(1)}°E</b> · no storms recorded in this cell`;
+  const te=trackEntry(), tr=document.getElementById('trackread');
+  tr.innerHTML = (te && te.n>=5)
+    ? `<b>24 h move (${MNAMES[month-1]})</b> · typically ${te.dLat>=0?'+':''}${te.dLat}° lat, ${te.dLon>=0?'+':''}${te.dLon}° lon → ${compass(te.dLat,te.dLon)} · ${te.n} past points · method's avg error ≈358 km`
+    : `24 h move · not enough storm history in this cell for ${MNAMES[month-1]}`;
   const fb={WIND:65,PRES:990,DWIND_24:5,DWIND_12:5,DWIND_6:0,DPRES_6:-2,DPRES_24:-5,SST:29,DIST2LAND:300,SPEED:8};
   FIELDS.forEach(([k])=>{ document.getElementById('in-'+k).value = d && d[k]!==undefined ? d[k] : fb[k]; });
   conds();
@@ -367,6 +459,7 @@ function predict(){
 }
 function conds(){
   const v=vals();
+  const env=ENV && ENV[sel.cell+','+month];
   const d=DEFS && DEFS[sel.cell+','+month];
   const anom = d ? (v.SST-d.SST) : 0;
   const r=(cls,m,txt)=>`<div><span class="${cls}">${m}</span> ${txt}</div>`;
@@ -375,9 +468,13 @@ function conds(){
     r(Math.abs(sel.lat)>=5?'ok':'bad', Math.abs(sel.lat)>=5?'+':'−', `Coriolis ${Math.abs(sel.lat).toFixed(1)}°`) +
     r(v.WIND>=34?'ok':'bad', v.WIND>=34?'+':'−', `Storm exists ${v.WIND} kt`) +
     r(v.DIST2LAND>150?'ok':'bad', v.DIST2LAND>150?'+':'−', `Open water ${v.DIST2LAND} km`) +
-    r('na','·','Instability — no data') +
-    r('na','·','Humidity — no data') +
-    r('na','·','Shear — no data');
+    (env ? r(env.CAPE>=1000?'ok':(env.CAPE<500?'bad':''), env.CAPE>=1000?'+':(env.CAPE<500?'−':'·'), `Instability CAPE ${env.CAPE} J/kg`)
+         : r('na','·','Instability — no data')) +
+    (env ? r(env.RH>=70?'ok':(env.RH<50?'bad':''), env.RH>=70?'+':(env.RH<50?'−':'·'), `Humidity RH ${env.RH}%`)
+         : r('na','·','Humidity — no data')) +
+    (env ? r(env.SHEAR<=10?'ok':(env.SHEAR>15?'bad':''), env.SHEAR<=10?'+':(env.SHEAR>15?'−':'·'), `Shear ${env.SHEAR} m/s`)
+         : r('na','·','Shear — no data')) +
+    (env ? `<div style="color:#4d5f69">Instability / humidity / shear: ERA5 2000–2020 monthly averages for this cell — typical conditions, not today's weather. Context only; the score does not use them.</div>` : '');
 }
 document.getElementById('predict').onclick=predict;
 document.querySelectorAll('.lay').forEach(b=> b.onclick=()=>{
@@ -388,8 +485,11 @@ document.querySelectorAll('.shp').forEach(b=> b.onclick=()=>{
   b.classList.add('on'); shape=b.dataset.shp; redraw(); });
 
 loadCoastlines();
-Promise.all([fetch('model_weights.json').then(r=>r.json()), fetch('region_stats.json').then(r=>r.json()), fetch('region_defaults.json').then(r=>r.json())])
- .then(([w,s,d])=>{ W=w; STATS=s; DEFS=d; applyCell(); redraw(); })
+Promise.all([fetch('model_weights.json').then(r=>r.json()), fetch('region_stats.json').then(r=>r.json()), fetch('region_defaults.json').then(r=>r.json()),
+  fetch('era5_env.json').then(r=>r.json()).catch(()=>null),
+  fetch('track_climatology.json').then(r=>r.json()).catch(()=>null),
+  fetch('live_storms.json').then(r=>r.json()).catch(()=>null)])
+ .then(([w,s,d,e2,t2,l2])=>{ W=w; STATS=s; DEFS=d; ENV=e2; TRACK=t2; LIVE=l2; renderLive(); applyCell(); redraw(); })
  .catch(e=>{ document.getElementById('locread').textContent='JSON files missing — they must sit next to index.html.'; });
 </script>
 </body>
