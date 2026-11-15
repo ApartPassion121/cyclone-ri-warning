@@ -1,0 +1,42 @@
+{
+ "source": "IBTrACS ACTIVE (NOAA NCEI), provisional agency rows",
+ "generated_utc": "2026-11-15 00:30",
+ "storms": [
+  {
+   "name": "Cempaka",
+   "sid": "2026310N18149",
+   "time_utc": "2026-11-11 12:00",
+   "lat": 30.2,
+   "lon": 154.1,
+   "wind_kt": 64.0,
+   "pres_hpa": 983.0,
+   "features": {
+    "WIND": 64.0,
+    "PRES": 983.0,
+    "DWIND_24": -20.0,
+    "DWIND_12": -6.0,
+    "DWIND_6": 0.0,
+    "DPRES_6": 0.0,
+    "DPRES_24": 13.0,
+    "LAT": 30.2,
+    "LON": 154.1,
+    "DIST2LAND": 1372.0,
+    "MONTH": 11,
+    "SPEED": 35.0,
+    "SST": 28.5
+   },
+   "prediction": {
+    "RI": 13.4,
+    "STEADY": 74.1,
+    "WEAKEN": 12.5
+   },
+   "track_24h": {
+    "dLat": 2.45,
+    "dLon": 7.3,
+    "lat": 32.65,
+    "lon": 161.4,
+    "method": "blend of storm motion + typical path (test mean error 358 km)"
+   }
+  }
+ ]
+}
