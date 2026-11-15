@@ -66,6 +66,9 @@ try:
         if st_.get('history'):
             h0 = datetime.strptime(st_['history'][0]['time_utc'], '%Y-%m-%d %H:%M').replace(tzinfo=timezone.utc)
             back = min(back, h0.replace(hour=(h0.hour//6)*6))
+    # Open-Meteo only serves ~10 days of past hourly data; asking for older
+    # frames made idx[w] raise KeyError, which skipped the whole wind update.
+    back = max(back, now-timedelta(days=10))
     want = []
     tcur = back
     while tcur < cutoff:
@@ -74,6 +77,7 @@ try:
     while tcur <= now+timedelta(hours=48):
         want.append(tcur.strftime('%Y-%m-%dT%H:00')); tcur += timedelta(hours=3)
     U = {w: [None]*len(pts) for w in want}; V = {w: [None]*len(pts) for w in want}
+    pruned = False
     for st in range(0, len(pts), 40):
         chunk = pts[st:st+40]
         la = ','.join(str(q[0]) for q in chunk)
@@ -85,6 +89,10 @@ try:
         if isinstance(res, dict): res = [res]
         for k, loc in enumerate(res):
             idx = {t: ii for ii, t in enumerate(loc['hourly']['time'])}
+            if not pruned:  # drop frames this feed does not cover instead of losing the whole file
+                for w in [x for x in want if x not in idx]:
+                    want.remove(w); U.pop(w, None); V.pop(w, None)
+                pruned = True
             spd = loc['hourly']['wind_speed_10m']; dr = loc['hourly']['wind_direction_10m']
             for w in want:
                 ii = idx[w]; rad = math.radians(dr[ii])
