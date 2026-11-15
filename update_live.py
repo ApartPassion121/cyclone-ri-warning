@@ -77,13 +77,18 @@ try:
     while tcur <= now+timedelta(hours=48):
         want.append(tcur.strftime('%Y-%m-%dT%H:00')); tcur += timedelta(hours=3)
     U = {w: [None]*len(pts) for w in want}; V = {w: [None]*len(pts) for w in want}
+    # MSLP on every other point (5 deg): the cursor readout needs the smooth
+    # field, not 2.5 deg detail, and a full-resolution array would add ~3 MB to
+    # a file the Action commits every 6 hours.
+    PS = 2; PNX = len(range(0, len(lons), PS)); PNY = len(range(0, len(lats), PS))
+    P = {w: [None]*(PNX*PNY) for w in want}
     pruned = False
     for st in range(0, len(pts), 40):
         chunk = pts[st:st+40]
         la = ','.join(str(q[0]) for q in chunk)
         lo = ','.join(str(q[1]-360 if q[1] > 180 else q[1]) for q in chunk)
         url = (f"https://api.open-meteo.com/v1/forecast?latitude={la}&longitude={lo}"
-               "&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&past_days=10&forecast_days=4")
+               "&hourly=wind_speed_10m,wind_direction_10m,pressure_msl&wind_speed_unit=ms&past_days=10&forecast_days=4")
         req = urllib.request.Request(url, headers={'User-Agent': 'cyclone-ri-warning/1.0'})
         res = json.load(urllib.request.urlopen(req, timeout=180))
         if isinstance(res, dict): res = [res]
@@ -91,17 +96,25 @@ try:
             idx = {t: ii for ii, t in enumerate(loc['hourly']['time'])}
             if not pruned:  # drop frames this feed does not cover instead of losing the whole file
                 for w in [x for x in want if x not in idx]:
-                    want.remove(w); U.pop(w, None); V.pop(w, None)
+                    want.remove(w); U.pop(w, None); V.pop(w, None); P.pop(w, None)
                 pruned = True
             spd = loc['hourly']['wind_speed_10m']; dr = loc['hourly']['wind_direction_10m']
             for w in want:
                 ii = idx[w]; rad = math.radians(dr[ii])
                 U[w][st+k] = round(-spd[ii]*math.sin(rad), 1); V[w][st+k] = round(-spd[ii]*math.cos(rad), 1)
+            pres = loc['hourly'].get('pressure_msl') or []
+            for k, gp in enumerate(range(st, st+len(chunk))):   # keep only the 5 deg subset
+                gi, gj = divmod(gp, len(lons))
+                if not pres or gi % PS or gj % PS: continue
+                pi = (gi//PS)*PNX + (gj//PS)
+                for w in want: P[w][pi] = round(pres[idx[w]])
         time.sleep(0.3)
-    frames = [{'time': w, 'u': U[w], 'v': V[w]} for w in want]
+    frames = [{'time': w, 'u': U[w], 'v': V[w], 'p': P[w]} for w in want]
     assert all(x is not None for f in frames for x in f['u'])
-    wf = {'header': {'nx': 144, 'ny': 71, 'lo1': 0, 'la1': 87.5, 'dx': STEP, 'dy': STEP,
-                     'source': 'Open-Meteo hourly 10 m wind (GFS/ICON blend), 3-hourly frames'},
+    wf = {'header': {'nx': len(lons), 'ny': len(lats), 'lo1': 0, 'la1': 87.5, 'dx': STEP, 'dy': STEP,
+                     'source': 'Open-Meteo hourly 10 m wind (GFS/ICON blend), 3-hourly frames',
+                     'p': {'nx': PNX, 'ny': PNY, 'lo1': 0, 'la1': 87.5, 'dx': STEP*PS, 'dy': STEP*PS,
+                           'source': 'Open-Meteo MSLP, every 2nd grid point'}},
           'frames': frames}
     json.dump(wf, open('wind_frames.json', 'w'), separators=(',', ':'))
     print('wind_frames.json written:', len(frames), 'frames')
