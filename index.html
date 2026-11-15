@@ -705,7 +705,7 @@ function predict(){
     document.getElementById(b).style.width=(P[k]*100)+'%'; document.getElementById(p).textContent=pct(k)+'%'; });
   const br=basinBaseRate(), brEl=document.getElementById('baserate');
   if(brEl) brEl.innerHTML = br===null ? '' :
-    `Observed basin base rate <b>${(br*100).toFixed(1)}%</b> — the share of storm points in this basin that rapid-intensified in 24 h. These bars rank the risk; they are not calibrated probabilities.`;
+    `Observed basin base rate <b>${br.toFixed(1)}%</b> — the share of storm points in this basin that rapid-intensified in 24 h. These bars rank the risk; they are not calibrated probabilities.`;
   const vd=document.getElementById('verdict'); vd.style.display='block';
   const T=W.warning_threshold;
   if(P.RI>=T){ vd.className='v-ri'; vd.innerHTML=`<b>RI WATCH</b> — prepare. Not an evacuation order.`; }
