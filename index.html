@@ -754,9 +754,21 @@ function compass(dLat,dLon){
 function trackEnd(){
   const dm = selCustom ? drawnMotion() : null;
   const t=trackEntry();
-  if(!dm && !t) return null;
   const [a,b]=sel.cell.split(',').map(Number);
   const from = selCustom ? {lat:sel.lat, lng:sel.lng} : {lat:a+1.25, lng:b+1.25};
+  // A storm the user placed has no reports to extrapolate, and a drawn leg only
+  // says where the clicks went - neither is a forecast. The analysed flow around
+  // it is, so that is what moves it: the mean 10 m wind 2.5-7.5 deg out, taken a
+  // day forward. Measured on the storms in the feed (tools/steer_test.py, 43
+  // cases over 3 storms) flow steering is a *worse* predictor than storm motion
+  // + climatology (144 km against 79 km mean error), so it is used only here,
+  // where there is no history to extrapolate.
+  if(selCustom){
+    const s=steer24(sel.lat, sel.lng);
+    if(s) return {lat:from.lat+s.dLat, lng:from.lng+s.dLon, fromLat:from.lat, fromLng:from.lng,
+      t:{src:`analysed flow ${Math.round(s.kt)} kt from ${dirName(s.from)}`, n:s.n, months:0}, via:'flow'};
+  }
+  if(!dm && !t) return null;
   if(dm){   // heading and speed from the pathway the user drew
     const sp=Number.isFinite(vals().SPEED)&&vals().SPEED>0 ? vals().SPEED : dm.kt;
     const cesc=Math.max(0.25, Math.cos(from.lat*Math.PI/180));
@@ -864,7 +876,7 @@ function stormHeads(){   // the 24 h point at the end of each storm's pathway
   if(selCustom){
     const e=trackEnd();
     if(e) out.push({lat:e.lat, lng:e.lng, color:'#ffe4b0', r:0.26, alt:0.013,
-      tip:`custom storm · 24 h position · ${e.via} · mean error ${TRACK_ERR.clim} km`});
+      tip:`custom storm · 24 h position · ${e.via==='flow'?e.t.src+' · steering has no measured error':`${e.via} · mean error ${TRACK_ERR.clim} km`}`});
   }
   return out;
 }
@@ -877,6 +889,11 @@ function trackInfo(){
     const blend=!liveTrack.method || liveTrack.method.startsWith('blend');
     box.innerHTML=`<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· `+
       (blend ? `storm motion + climatology · mean error ${TRACK_ERR.blend} km` : 'storm motion only · no local climatology')+`</span>`;
+    return;
+  }
+  if(e.via==='flow'){   // a placed storm: moved by the analysed flow, nothing measured for it
+    box.innerHTML = `<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· `+
+      `${e.t.src} (${e.t.n} samples around it) · steering has no measured error</span>`;
     return;
   }
   const drawn = e.t && e.t.src==='the pathway you drew';
@@ -1397,6 +1414,27 @@ let windGroup=null, windGeo=null, windParts=[], windRAF=null, windLast=0;
    instead of world.getCoords(), which builds a fresh Vector3 per call
    (measured here: 90k getCoords = 32.6 ms, 90k inline conversions = 5.6 ms). */
 const _UV=[0,0];
+/* Mean analysed flow around a point: 24 samples on rings of 2.5, 5 and 7.5 deg,
+   skipping the core (a cyclone sits inside 2 deg and its own circulation is not
+   steering). Returns the 24 h displacement that flow implies: u,v in m/s times
+   86400 s, divided by the metres in a degree. */
+const _ST=[0,0];
+function steer24(lat, lng){
+  const F=WINDJ && WINDJ.frames[tIdx]; if(!F||!F.u) return null;
+  let su=0, sv=0, n=0;
+  const cesc=Math.max(0.25, Math.cos(lat*Math.PI/180));
+  for(const r of [2.5,5,7.5]) for(let k=0;k<8;k++){
+    const a=k*Math.PI/4, la=lat+r*Math.cos(a);
+    if(Math.abs(la)>87) continue;
+    const uv=windSample(la, lng+r*Math.sin(a)/cesc, _ST);
+    if(!Number.isFinite(uv[0])||!Number.isFinite(uv[1])) continue;
+    su+=uv[0]; sv+=uv[1]; n++;
+  }
+  if(n<6) return null;
+  su/=n; sv/=n;
+  return {dLat:sv*86400/111000, dLon:su*86400/(111000*cesc), n,
+          kt:Math.hypot(su,sv)*1.94384, from:(270-Math.atan2(sv,su)*180/Math.PI+360)%360};
+}
 function windSample(lat, lon, out){
   const h=WINDJ.header, F=WINDJ.frames[tIdx];
   const fx=(((lon%360)+360)%360)/h.dx;
