@@ -230,6 +230,11 @@ def main():
     tr = tr[tr["SEASON"] <= 2020]
     tr["CLAT"] = (np.floor((tr["LAT"] - lat0) / 2.5) * 2.5 + lat0 + 1.25).round(2)
     tr["CLON"] = (np.floor((tr["LON"] - lon0) / 2.5) * 2.5 + lon0 + 1.25).round(2)
+    # dLat/dLon are FUTURE minus now: a positive dLon is eastward motion. The
+    # shipped tables came out with both components negated (a 16 N November cell
+    # read eastward while the archive moves westward), and were corrected on
+    # 15 Nov 2026 against IBTrACS 24 h pairs. If a re-export ever disagrees with
+    # the archive again, check what LAT_p24/LON_p24 are shifted to before shipping.
     tr["dLat"] = tr["LAT_p24"] - tr["LAT"]
     tr["dLon"] = tr["LON_p24"] - tr["LON"]
     track = {}

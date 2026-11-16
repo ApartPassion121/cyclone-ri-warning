@@ -777,7 +777,7 @@ function stormPaths(){
     for(const h of H){ if(ms(h)>t) break; trail.push([h.lat,h.lon]); }
     if(ep.replay) trail.push([ep.lat,ep.lon]);   // between two fixes
     if(trail.length>1) out.push(P(unwrapLon(trail),'#ff9e57',2.2,0.011));
-    const tr=st.track_24h;
+    const tr=frameTrack(st,ep);
     if(tr) out.push(P(unwrapLon([[ep.lat,ep.lon],[ep.lat+tr.dLat, ep.lon+tr.dLon]]),'#ffe4b0',1.8,0.011));
   }
   // the pathway the user drew, with the 24 h branch extending its last leg
@@ -793,12 +793,37 @@ function drawDots(){   // every drawn fix except the last, which the spiral alre
   return drawPts.slice(0,-1).map((p,i)=>({lat:p.lat, lng:p.lng, color:'#8fd0ff', r:0.18, alt:0.013,
     tip:`fix ${i+1} · ${fmtLat(p.lat)} ${fmtLng(p.lng)}`}));
 }
+/* 24 h displacement for the frame on screen. track_24h is one vector computed
+   from a storm's LAST report, so using it at every replay frame pointed the
+   pale branch from an early position along its final heading - for Cempaka on
+   7 Nov that meant north-east while it was still moving north-west, 1,300 km
+   out. Rebuild it the way the updater does, from the storm's own 6 h motion at
+   that moment (extrapolated x4 to 24 h) blended half-and-half with the track
+   climatology for the cell and month it is in at that frame. */
+function frameTrack(st,ep){
+  const ms=h=>Date.parse(h.time_utc.replace(' ','T')+'Z'), t=frameMs(tIdx);
+  const H=(st.history||[]).filter(h=>ms(h)<=t);
+  const m=new Date(t).getUTCMonth()+1;
+  const cl=trackFor(cellKey(ep.lat, ep.lon), m);
+  let mLat=null, mLon=null;
+  if(H.length>=2){
+    const last=H[H.length-1];
+    let six=null, bd=1e18;
+    for(const h of H){ const d=Math.abs(ms(last)-ms(h)-6*3600e3); if(d<bd){ bd=d; six=h; } }
+    if(six && six!==last){ mLat=4*(last.lat-six.lat); mLon=4*wrapDelta(last.lon-six.lon); }
+  }
+  if(mLat==null) return cl ? {dLat:cl.dLat, dLon:cl.dLon} : null;
+  if(!cl) return {dLat:mLat, dLon:mLon};
+  return {dLat:0.5*mLat+0.5*cl.dLat, dLon:0.5*mLon+0.5*cl.dLon};
+}
 function stormHeads(){   // the 24 h point at the end of each storm's pathway
-  const out=liveNow().filter(({st})=>st.track_24h).map(({st,ep})=>{
-    const tr=st.track_24h, f=forecast24(st.wind_kt, st.pres_hpa, st.prediction);
-    return {lat:ep.lat+tr.dLat, lng:ep.lon+tr.dLon, color:'#ffe4b0', r:0.26, alt:0.013,
-      tip:`${st.name} · 24 h position${f?` · ${f.w24} kt · ${f.p24} hPa`:''} · storm motion + climatology · mean error ${TRACK_ERR.blend} km`};
-  });
+  const out=[];
+  for(const {st,ep} of liveNow()){
+    const tr=frameTrack(st,ep); if(!tr) continue;
+    const f=forecast24(st.wind_kt, st.pres_hpa, st.prediction);
+    out.push({lat:ep.lat+tr.dLat, lng:ep.lon+tr.dLon, color:'#ffe4b0', r:0.26, alt:0.013,
+      tip:`${st.name} · 24 h position${f?` · ${f.w24} kt · ${f.p24} hPa`:''} · storm motion + climatology · mean error ${TRACK_ERR.blend} km`});
+  }
   if(selCustom){
     const e=trackEnd();
     if(e) out.push({lat:e.lat, lng:e.lng, color:'#ffe4b0', r:0.26, alt:0.013,
@@ -1048,6 +1073,7 @@ const fmtLat=v=>`${Math.abs(v).toFixed(1)}°${v>=0?'N':'S'}`;
    dateline), and "215.7°E" is not a place. Normalise to -180..180 before
    printing, so every readout names the hemisphere a user can actually find. */
 const wrapLng=v=>((v+180)%360+360)%360-180;
+const wrapDelta=wrapLng;   // a difference of two longitudes wraps the same way
 const fmtLng=v=>{ const w=wrapLng(v); return `${Math.abs(w).toFixed(1)}°${w>=0?'E':'W'}`; };
 /* A model's own training box, in +-180 longitude so 180 E and 180 W are the
    same number and a box the model declares can cross the dateline. */
