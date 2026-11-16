@@ -98,6 +98,7 @@
     padding:4px 7px; background:rgba(4,9,13,.92); border:1px solid #2a3a44; color:#dfe9ee;
     line-height:1.55; white-space:nowrap; }
   #cursorread .w { color:#cfe3cf; } #cursorread .p { color:#ffc07a; } #cursorread .st { color:#ffd9a8; }
+  #cursorread.storm { white-space:normal; max-width:min(270px,62vw); }
   .scene-tooltip { font:11px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#dfe9ee; background:rgba(4,9,13,.92); border:1px solid #2a3a44; padding:3px 6px; pointer-events:none; white-space:nowrap; }
   .scene-tooltip:empty { display:none; }
   @media (max-width:820px){ #panel{ left:12px; width:auto; max-height:48vh; } #hud p{display:none;} #ctl{max-width:none; bottom:52px;} }
@@ -619,22 +620,34 @@ function renderLive(){
     return;
   }
   const gen=Date.parse((LIVE.generated_utc||'').replace(' ','T')+'Z');
+  // The numbers live on the globe: hover a spiral to read its wind, pressure,
+  // probabilities and 24 h forecast (see liveTip). This list is the index.
   box.innerHTML = LIVE.storms.map((st,i)=>{
     const ageH=(gen-Date.parse(st.time_utc.replace(' ','T')+'Z'))/36e5;
     const gone = ageH>36;   // no new report for a day and a half: the storm is over
-    const ep=effPos(st);
-    const when = ep && ep.replay ? `<div class="lm">replaying ${frameLabel(tIdx)}: ${ep.wind} kt · ${ep.pres} hPa</div>` : '';
-    return `<div><span class="lh">● ${gone?'LAST STORM':'LIVE'}</span> <img class="cicon" src="cyclone.svg" alt=""><span class="lstorm" data-i="${i}">${st.name}</span> <span class="lm">${st.wind_kt} kt${st.pres_hpa!=null?` · ${st.pres_hpa} hPa`:''} · ${st.time_utc} UTC</span></div>`+
-    (gone ? `<div class="lm">dissipated ${whenUTC(st.time_utc)} UTC · its last report, so it is off the globe at now</div>` : '')+
-    (st.prediction
-      ? `<div class="lm">model: RI ${st.prediction.RI}% · STEADY ${st.prediction.STEADY}% · WEAK ${st.prediction.WEAKEN}%</div>`+
-        ((f=>f?`<div class="lm">24 h: ${fc24Line(f)}</div>`:'')(forecast24(st.wind_kt, st.pres_hpa, st.prediction)))
-      : // outside the model's basins: tracked, never scored
-        `<div class="lm">not scored · ${basinName(st)}, outside the model's basins`+
-        (st.track_24h ? ` · <span style="color:#c9a227">24 h track ${fmtLat(st.track_24h.lat)} ${fmtLng(st.track_24h.lon)} by storm motion only</span>` : '') + `</div>`)+
-      when;
-  }).join('');
+    return `<div><span class="lh">● ${gone?'LAST':'LIVE'}</span> <img class="cicon" src="cyclone.svg" alt=""><span class="lstorm" data-i="${i}">${st.name}</span> <span class="lm">${st.wind_kt} kt${st.prediction?'':' · not scored'}</span></div>`;
+  }).join('') + `<div class="lm" style="color:#5f7079">hover a spiral for its numbers · click a name to load it</div>`;
   box.querySelectorAll('.lstorm').forEach(el=> el.onclick=()=>loadLive(+el.dataset.i));
+}
+/* Everything the panel used to print under each storm, shown on hover instead:
+   status, time, dissipation, the model's three probabilities and the 24 h
+   numbers - or, outside the model's basins, what is tracked and why nothing is
+   scored. Replay frames add the wind and pressure at the frame on screen. */
+function liveTip(st, ep){
+  const gen=Date.parse((LIVE.generated_utc||'').replace(' ','T')+'Z');
+  const gone=((gen-Date.parse(st.time_utc.replace(' ','T')+'Z'))/36e5)>36;
+  const L=[`<b>${gone?'LAST STORM':'LIVE'} · ${st.name}</b> ${st.wind_kt} kt${st.pres_hpa!=null?` · ${st.pres_hpa} hPa`:''} · ${st.time_utc} UTC`];
+  if(gone) L.push(`dissipated ${whenUTC(st.time_utc)} UTC · its last report, so it is off the globe at now`);
+  if(ep && ep.replay) L.push(`replaying ${frameLabel(tIdx)}: ${ep.wind} kt · ${ep.pres} hPa`);
+  if(st.prediction){
+    L.push(`model: RI ${st.prediction.RI}% · STEADY ${st.prediction.STEADY}% · WEAK ${st.prediction.WEAKEN}%`);
+    const f=forecast24(st.wind_kt, st.pres_hpa, st.prediction);
+    if(f) L.push(`24 h: ${fc24Line(f)}`);
+  } else {
+    L.push(`not scored · ${basinName(st)}, outside the model's basins`);
+    if(st.track_24h) L.push(`24 h track ${fmtLat(st.track_24h.lat)} ${fmtLng(st.track_24h.lon)} by storm motion only`);
+  }
+  return L.join('<br>');
 }
 function whenUTC(s){   // "2026-11-11 12:00" -> "11 Nov 12:00"
   const d=new Date(Date.parse(s.replace(' ','T')+'Z'));
@@ -1307,11 +1320,21 @@ function paintCursor(){
   const p=sampleP(glat,glng), st=nearestStorm(glat,glng);
   // "from": the compass point the wind blows out of, not towards, so the arrow
   // direction can never be read the wrong way round.
-  let html=`${fmtLat(glat)} ${fmtLng(glng)}<br>wind <span class="w">${kt} kt from ${dirName(from)}</span>`;
-  // The 5 deg grid cannot resolve an eye, so inside a storm radius its MSLP is
-  // background pressure: prefer the storm's own reported centre pressure there.
-  if(!st && Number.isFinite(p)) html+=` · <span class="p">${Math.round(p)} hPa</span>`;
-  if(st) html+=`<br><span class="st">◉ ${st.st.name}</span> ${Math.round(st.d)} km · ${st.ep.wind!=null?st.ep.wind:st.st.wind_kt} kt · ${st.pr} hPa centre`;
+  // Over a cyclone the box shows that storm's numbers instead: status, wind,
+  // dissipation, the three probabilities and the 24 h forecast (or, outside the
+  // model's basins, what is tracked and why nothing is scored). The spiral is a
+  // custom-layer mesh, whose labels never fired a tooltip in this build, so the
+  // readout we already paint at the pointer carries the data.
+  let html;
+  if(st) html=liveTip(st.st, st.ep);
+  else {
+    html=`${fmtLat(glat)} ${fmtLng(glng)}<br>wind <span class="w">${kt} kt from ${dirName(from)}</span>`;
+    // The 5 deg grid cannot resolve an eye, so inside a storm radius its MSLP is
+    // background pressure: the storm block above quotes the reported centre instead.
+    if(Number.isFinite(p)) html+=` · <span class="p">${Math.round(p)} hPa</span>`;
+  }
+  const isStorm=!!st;   // the storm block wraps, the coordinate line does not
+  if(isStorm!==el.classList.contains('storm')){ el.classList.toggle('storm', isStorm); curHTML=''; }
   if(!curShown){ el.style.display='block'; curShown=true; curHTML=''; }   // show first: a hidden node measures 0
   if(html!==curHTML){ el.innerHTML=html; curHTML=html; curW=el.offsetWidth; curH=el.offsetHeight; }
   // globe.gl puts its own label (cell, storm, 24 h path) at the pointer too, so
