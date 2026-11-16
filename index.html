@@ -78,6 +78,12 @@
   #fc24 { margin-top:7px; border-top:1px solid #26333b; padding-top:6px; color:#8fa3ad; line-height:1.55; display:none; }
   #fc24 b { color:#e8eef1; font-weight:500; }
   #fc24 .note { color:#4d5f69; line-height:1.45; margin-top:3px; font-size:10px; }
+  #why { margin-top:7px; padding:5px 7px; display:none; border-left:2px solid #2a3a44; background:rgba(20,29,34,.5); }
+  #why .hd { color:#8fa3ad; letter-spacing:.09em; font-size:10px; margin-bottom:3px; }
+  #why .row { display:flex; justify-content:space-between; gap:10px; line-height:1.5; max-width:330px; }
+  #why .row span:first-child { color:#c6d3da; }
+  #why .up { color:#e08a4c; } #why .dn { color:#8fa3ad; }
+  #why .note { color:#4d5f69; line-height:1.45; margin-top:4px; font-size:10px; }
   #conds { margin-top:8px; border-top:1px solid #26333b; padding-top:6px; color:#8fa3ad; line-height:1.6; display:none; }
   #conds .hd { color:#8fa3ad; letter-spacing:.09em; font-size:10px; margin-bottom:3px; }
   #conds .ok { color:#7fb069; } #conds .bad { color:#e08a4c; } #conds .na { color:#4d5f69; }
@@ -172,6 +178,7 @@
       <div id="baserate"></div>
     </div>
     <div id="verdict"></div>
+    <div id="why"></div>
     <div id="fc24"></div>
     <div id="conds"></div>
     <div id="track"></div>
@@ -681,6 +688,7 @@ function   loadLive(i){
     const vd=document.getElementById('verdict');
     vd.style.display='block'; vd.className='v-na'; vd.dataset.na='1';
     vd.innerHTML=`<b>TRACKED, NOT SCORED</b> — ${st.name} is in the ${basinName(st)}, outside the basins this model was trained on (${REGIONS.map(x=>domText(x.domain)).join(' or ')}). Position, wind and track are IBTrACS reports; the rapid-intensification forecast is not issued here because it would be extrapolation.`;
+    hideWhy();   // no fit ran, so there is nothing to attribute
   }
   world.pointOfView({lat:st.lat, lng:st.lon, altitude:1.5}, 900);
 }
@@ -1015,6 +1023,7 @@ function pick(lat,lng){
   showFC24(null);
   const vd=document.getElementById('verdict');
   if(vd){ vd.style.display='none'; vd.textContent=''; }
+  hideWhy();
   corridorGate();   // refuse (and disable RUN) outside the training corridor
   redrawSelection();
   const p=world.pointOfView();
@@ -1113,7 +1122,7 @@ function fieldsGate(){
   const miss=missingFields(), vd=document.getElementById('verdict');
   if(!miss.length){ if(vd && vd.dataset.miss){ vd.style.display='none'; vd.textContent=''; vd.className=''; delete vd.dataset.miss; } return true; }
   const res=document.getElementById('result'); if(res) res.style.display='none';
-  showFC24(null);
+  showFC24(null); hideWhy();
   ['p-ri','p-we','p-st'].forEach(id=>{ document.getElementById(id).textContent=''; });
   vd.style.display='block'; vd.className='v-na'; vd.dataset.miss='1';
   vd.innerHTML=`<b>MISSING VALUES</b> — ${miss.slice(0,4).join(', ')}${miss.length>4?` and ${miss.length-4} more`:''} ${miss.length===1?'is':'are'} empty. All ${FIELDS.length} inputs are needed; click the globe to restore the defaults.`;
@@ -1134,7 +1143,7 @@ function rangeGate(){
   const bad=belowFloor(), vd=document.getElementById('verdict');
   if(!bad.length){ if(vd && vd.dataset.bad){ vd.style.display='none'; vd.textContent=''; vd.className=''; delete vd.dataset.bad; } return true; }
   const res=document.getElementById('result'); if(res) res.style.display='none';
-  showFC24(null);
+  showFC24(null); hideWhy();
   ['p-ri','p-we','p-st'].forEach(id=>{ document.getElementById(id).textContent=''; });
   vd.style.display='block'; vd.className='v-na'; vd.dataset.bad='1';
   vd.innerHTML=`<b>IMPOSSIBLE VALUE</b> — ${bad.slice(0,3).join(', ')}: wind speed, pressure, sea temperature, distance to land and motion cannot be below zero. ΔWIND and ΔPRES can — they are changes.`;
@@ -1189,7 +1198,7 @@ function corridorGate(){
     return true;
   }
   const res=document.getElementById('result'); if(res) res.style.display='none';
-  showFC24(null);
+  showFC24(null); hideWhy();
   vd.style.display='block'; vd.className='v-na'; vd.dataset.na='1';
   const boxes=[...new Set((REGIONS.length?REGIONS.map(x=>x.domain):[CORRIDOR]).map(domText))].join(' or ');
   vd.innerHTML=`<b>NO PREDICTION</b> — ${fmtLat(sel.lat)} ${fmtLng(sel.lng)} is outside the training ${REGIONS.length>1?'domains':'box'} (${boxes}). The model never saw a storm there.`;
@@ -1205,6 +1214,36 @@ function basinBaseRate(){
     BASE_RATE = den ? num/den : null;
   }
   return BASE_RATE;
+}
+/* Why the verdict, not just what it is: the logits predict() computes, split by
+   input. Row j is x_j*(coef[c][j] - mean over classes of coef[.][j]) - the share
+   of the chosen class's lead over the average class that this one input carried,
+   in the standardised units the fit works in. The intercept keeps its own lean in
+   a "baseline" row, so the block plus the baseline is exactly that lead. */
+const FNAME={WIND:'wind', PRES:'pressure', DWIND_24:'Δwind 24 h', DWIND_12:'Δwind 12 h',
+  DWIND_6:'Δwind 6 h', DPRES_6:'Δpres 6 h', DPRES_24:'Δpres 24 h', LAT:'latitude',
+  LON:'longitude', LON_SIN:'longitude sin', LON_COS:'longitude cos', DIST2LAND:'to land', MONTH:'month',
+  SPEED:'motion', SST:'SST'};
+function hideWhy(){ const el=document.getElementById('why'); if(el) el.style.display='none'; }
+function showWhy(cls){
+  const el=document.getElementById('why'); if(!el) return;
+  const ci=W ? W.classes.indexOf(cls) : -1;
+  if(ci<0){ hideWhy(); return; }
+  const v=vals(), n=W.features.length;
+  const x=W.features.map((f,i)=>(v[f]-W.scaler_mean[i])/W.scaler_scale[i]);
+  const meanCoef=W.coef[0].map((_,j)=>W.coef.reduce((s,c)=>s+c[j],0)/W.coef.length);
+  const rows=W.features.map((f,j)=>({l:FNAME[f]||f, c:x[j]*(W.coef[ci][j]-meanCoef[j])}))
+                      .sort((a,b)=>Math.abs(b.c)-Math.abs(a.c));
+  const top=rows.slice(0,5), rest=rows.slice(5).reduce((s,r)=>s+r.c,0);
+  const base=W.intercept[ci]-W.intercept.reduce((a,b)=>a+b,0)/W.intercept.length;
+  const fg=n=>(n>=0?'+':'−')+Math.abs(n).toFixed(2);
+  const row=(l,c,cls)=>`<div class="row"><span>${l}</span><span class="${cls||(c>=0?'up':'dn')}">${fg(c)}</span></div>`;
+  el.innerHTML=`<div class="hd">WHY · ${cls}</div>`+
+    top.map(r=>row(r.l, r.c)).join('')+
+    (rest? row(`${rows.length-5} smaller input${rows.length-5===1?'':'s'}`, rest):'')+
+    row('baseline (intercept)', base, 'dn')+
+    `<div class="note">standardised logit units · each row is that one input's push on the ${cls} logit against the average class, positive toward ${cls} · rows plus baseline are the whole lead the bars above are made of.</div>`;
+  el.style.display='block';
 }
 function predict(){
   if(!W) return;
@@ -1226,6 +1265,7 @@ function predict(){
   showFC24(forecast24(v.WIND, v.PRES, P));
   const vd=document.getElementById('verdict'); vd.style.display='block';
   const T=W.warning_threshold;
+  showWhy(P.RI>=T ? 'RI' : (P.WEAKEN>=T ? 'WEAKEN' : 'STEADY'));
   if(P.RI>=T){ vd.className='v-ri'; vd.innerHTML=`<b>RI WATCH</b> — prepare. Not an evacuation order.`; }
   else if(P.WEAKEN>=T){ vd.className='v-we'; vd.innerHTML=`<b>RAPID WEAKENING LIKELY</b> — wind threat falls; flood risk may persist.`; }
   else { vd.className='v-st'; vd.innerHTML=`<b>STEADY</b> — no rapid change likely in 24 h.`; }
