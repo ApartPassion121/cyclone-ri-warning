@@ -1354,7 +1354,7 @@ function paintCursor(){
   const g=(curAt && WINDJ && world.toGlobeCoords(curAt.x, curAt.y)) || null;
   if(!g){ if(curShown){ el.style.display='none'; curShown=false; } return; }
   const glat=g.lat, glng=wrapLng(g.lng);   // wrapped once, so the text and the samples agree
-  const uv=windSample(glat, glng, _CUV), kt=Math.round(Math.hypot(uv[0],uv[1])*KT);
+  const uv=windSample(glat, glng, _CUV), kt=(Math.hypot(uv[0],uv[1])*KT).toFixed(1);
   const from=(270-Math.atan2(uv[1],uv[0])*180/Math.PI+360)%360;
   const p=sampleP(glat,glng), st=nearestStorm(glat,glng);
   // "from": the compass point the wind blows out of, not towards, so the arrow
@@ -1367,10 +1367,15 @@ function paintCursor(){
   let html;
   if(st) html=liveTip(st.st, st.ep);
   else {
-    html=`${fmtLat(glat)} ${fmtLng(glng)}<br>wind <span class="w">${kt} kt from ${dirName(from)}</span>`;
+    // Named as the environment, not the storm, with one decimal and the frame it
+    // was read from: whole knots from a 2.5 deg field repeat at distant points and
+    // read like the cyclone's own intensity, which this line is not.
+    html=`${fmtLat(glat)} ${fmtLng(glng)}<br>10 m env. wind <span class="w">${kt} kt from ${dirName(from)}</span>`;
     // The 5 deg grid cannot resolve an eye, so inside a storm radius its MSLP is
     // background pressure: the storm block above quotes the reported centre instead.
     if(Number.isFinite(p)) html+=` · <span class="p">${Math.round(p)} hPa</span>`;
+    const ft=WINDJ ? frameLabel(tIdx).replace(/ · (past|now|forecast)$/, '') : '';
+    if(ft) html+=` · ${ft}`;
   }
   const isStorm=!!st;   // the storm block wraps, the coordinate line does not
   if(isStorm!==el.classList.contains('storm')){ el.classList.toggle('storm', isStorm); curHTML=''; }
