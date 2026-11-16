@@ -1,8 +1,12 @@
 # Regenerates live_storms.json and wind_frames.json; track_climatology.json is
 # static (exported by the model notebook).
 # Run by .github/workflows/live.yml every 6 hours. Source: IBTrACS ACTIVE (NOAA NCEI).
-# Storms: every North Pacific one in that feed (WP, EP and CP basins), each scored
-# by the fit for the box it sits in - the same choice the page makes in regionFor().
+# Storms: every storm in that feed, whatever the basin. A storm inside the model's
+# boxes (WP and EP/CP) is scored by the fit for the box it sits in - the same choice
+# the page makes in regionFor(); a storm anywhere else (North Atlantic, the Indian
+# Ocean, the southern hemisphere) is tracked and drawn but NOT scored, because the
+# model never saw those basins and an answer there would be extrapolation dressed
+# as a forecast.
 import pandas as pd, numpy as np, json, math, urllib.request, io, os
 # This file lives in tools/; the JSON it reads and writes sits at the repo root.
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,10 +29,14 @@ for name, (wf, rf, tf) in {
     try: FITS[name] = {'W': json.load(open(at(wf))), 'D': json.load(open(at(rf))), 'T': json.load(open(at(tf)))}
     except FileNotFoundError: pass   # a checkout without the widened pair still runs
 FITS['base'] = {'W': json.load(open(at('model_weights.json'))), 'D': json.load(open(at('region_defaults.json'))), 'T': json.load(open(at('track_climatology.json')))}
-def fit_for(lat, lon):
-    if 5 <= lat <= 40 and 110 <= lon <= 180: return FITS.get('wp', FITS['base'])
-    if 5 <= lat <= 40 and (lon <= -70 or lon >= 180): return FITS.get('east', FITS['base'])
-    return FITS['base']   # outside both boxes: still scored, the page flags it as extrapolated
+def box_for(lat, lon):
+    if 5 <= lat <= 40 and 110 <= lon <= 180: return 'wp'
+    if 5 <= lat <= 40 and (lon <= -70 or lon >= 180): return 'east'
+    return None   # outside both boxes: tracked, not scored
+BASIN_NAME = {'WP': 'west Pacific', 'EP': 'east Pacific', 'CP': 'central Pacific',
+              'NA': 'North Atlantic', 'NI': 'north Indian', 'SI': 'south Indian', 'SP': 'south Pacific'}
+def fit_for(box):
+    return FITS.get(box, FITS['base'])
 def cell_keys(lat, lon, month):   # centre key for track_climatology, SW corner for region_defaults
     la = math.floor(lat/2.5)*2.5; lo = math.floor(lon/2.5)*2.5
     return f"{la+1.25:.2f},{lo+1.25:.2f},{month}", f"{la:.1f},{lo:.1f},{month}"
@@ -39,35 +47,63 @@ def predict(W, f):
     return {k: round(v/s*100,1) for k, v in ex.items()}
 import datetime
 out = {'source': 'IBTrACS ACTIVE (NOAA NCEI), provisional agency rows', 'generated_utc': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M'), 'storms': []}
-for sid, g in df[df['BASIN'].isin(('WP','EP','CP'))].groupby('SID'):
-    g = g.sort_values('ISO_TIME').dropna(subset=['WIND','LAT','LON'])
-    if len(g) < 9: continue
+for sid, g in df[df['SID'].notna()].groupby('SID'):
+    g = g.sort_values('ISO_TIME').dropna(subset=['LAT','LON'])
+    g = g[g['WIND'].notna()]
+    if len(g) < 2: continue   # a single fix has no motion to extrapolate
     g = g.reset_index(drop=True); r = g.iloc[-1]; t = r['ISO_TIME']
     def past(hours, col):   # named past(), not at(): at() is the path helper above
         j = g[g['ISO_TIME'] == t - pd.Timedelta(hours=hours)]
         return float(j[col].iloc[0]) if len(j) and pd.notna(j[col].iloc[0]) else None
     w6, w12, w24, p6, p24 = past(6,'WIND'), past(12,'WIND'), past(24,'WIND'), past(6,'PRES'), past(24,'PRES')
     la6, lo6 = past(6,'LAT'), past(6,'LON')
-    if None in (w6,w12,w24,p6,p24,la6,lo6): continue
     lat, lon = float(r['LAT']), float(r['LON'])
-    fit = fit_for(lat, lon)
-    key, swkey = cell_keys(lat, lon, t.month)
-    dd = fit['D'].get(swkey, {}); clim = fit['T'].get(key, {'dLat': 0.5, 'dLon': -1.0})
-    pres = float(r['PRES']) if pd.notna(r['PRES']) else dd.get('PRES', 1005.0)
-    f = {'WIND': float(r['WIND']), 'PRES': pres, 'DWIND_24': float(r['WIND']-w24), 'DWIND_12': float(r['WIND']-w12),
-         'DWIND_6': float(r['WIND']-w6), 'DPRES_6': pres-p6, 'DPRES_24': pres-p24,
-         'LAT': lat, 'LON': lon, 'LON_SIN': math.sin(math.radians(lon)), 'LON_COS': math.cos(math.radians(lon)),
-         'DIST2LAND': float(r['DIST2LAND']) if pd.notna(r['DIST2LAND']) else 1000.0,
-         'MONTH': int(t.month), 'SPEED': float(r['STORM_SPEED']) if pd.notna(r['STORM_SPEED']) else 10.0, 'SST': dd.get('SST', 28.5)}
-    bdlat = 0.5*(4*(lat-la6)) + 0.5*clim['dLat']; bdlon = 0.5*(4*(lon-lo6)) + 0.5*clim['dLon']
+    basin = str(r['BASIN'])
+    box = box_for(lat, lon)
+    # the last reported step, extrapolated to 24 h: used when the 6-hour slab the
+    # model needs is missing, and for every storm outside the trained basins
+    def motion24():
+        for k in range(1, min(7, len(g))):
+            p = g.iloc[-1-k]
+            dt = (t - p['ISO_TIME']).total_seconds()/3600.0
+            if dt < 3: continue   # the same synoptic time reported twice
+            dl = float(r['LON']) - float(p['LON'])
+            while dl > 180: dl -= 360
+            while dl < -180: dl += 360
+            return (24.0/dt)*(float(r['LAT'])-float(p['LAT'])), (24.0/dt)*dl
+        return None
+    feats = None if None in (w6,w12,w24,p6,p24,la6,lo6) else True
+    scored = box is not None and feats
+    pred = None
+    if scored:
+        fit = fit_for(box)
+        key, swkey = cell_keys(lat, lon, t.month)
+        dd = fit['D'].get(swkey, {}); clim = fit['T'].get(key, {'dLat': 0.5, 'dLon': -1.0})
+        pres = float(r['PRES']) if pd.notna(r['PRES']) else dd.get('PRES', 1005.0)
+        f = {'WIND': float(r['WIND']), 'PRES': pres, 'DWIND_24': float(r['WIND']-w24), 'DWIND_12': float(r['WIND']-w12),
+             'DWIND_6': float(r['WIND']-w6), 'DPRES_6': pres-p6, 'DPRES_24': pres-p24,
+             'LAT': lat, 'LON': lon, 'LON_SIN': math.sin(math.radians(lon)), 'LON_COS': math.cos(math.radians(lon)),
+             'DIST2LAND': float(r['DIST2LAND']) if pd.notna(r['DIST2LAND']) else 1000.0,
+             'MONTH': int(t.month), 'SPEED': float(r['STORM_SPEED']) if pd.notna(r['STORM_SPEED']) else 10.0, 'SST': dd.get('SST', 28.5)}
+        bdlat = 0.5*(4*(lat-la6)) + 0.5*clim['dLat']; bdlon = 0.5*(4*(lon-lo6)) + 0.5*clim['dLon']
+        method = 'blend of storm motion + typical path (test mean error 358 km)'
+        pred = predict(fit['W'], f)
+    else:
+        f = None
+        m = motion24()
+        bdlat, bdlon = m if m else (0.0, 0.0)
+        method = ('storm motion only - no climatology outside the trained basins' if box is None
+                  else 'storm motion only - not enough history for the model window')
     hist = [{'time_utc': row['ISO_TIME'].strftime('%Y-%m-%d %H:%M'), 'lat': float(row['LAT']), 'lon': float(row['LON']),
              'wind_kt': float(row['WIND']), 'pres_hpa': float(row['PRES']) if pd.notna(row['PRES']) else None}
             for _, row in g.iterrows() if pd.notna(row['LAT']) and pd.notna(row['WIND'])]
-    out['storms'].append({'name': str(r['NAME']).title(), 'sid': sid, 'time_utc': t.strftime('%Y-%m-%d %H:%M'), 'history': hist,
+    out['storms'].append({'name': str(r['NAME']).title(), 'sid': sid, 'basin': basin,
+        'basin_name': BASIN_NAME.get(basin, basin), 'scored': bool(scored),
+        'time_utc': t.strftime('%Y-%m-%d %H:%M'), 'history': hist,
         'lat': lat, 'lon': lon, 'wind_kt': float(r['WIND']), 'pres_hpa': float(r['PRES']) if pd.notna(r['PRES']) else None,
-        'features': f, 'prediction': predict(fit['W'], f),
+        'features': f, 'prediction': pred,
         'track_24h': {'dLat': round(bdlat,2), 'dLon': round(bdlon,2), 'lat': round(lat+bdlat,2), 'lon': round(lon+bdlon,2),
-                      'method': 'blend of storm motion + typical path (test mean error 358 km)'}})
+                      'method': method}})
 # newest report first: the panel puts the storm that is still alive at the top
 out['storms'].sort(key=lambda s: s['time_utc'], reverse=True)
 json.dump(out, open(at('live_storms.json'),'w'), indent=1, allow_nan=False)

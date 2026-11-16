@@ -607,12 +607,15 @@ function stormMarkers(){
 function liveLabels(){   // name above the spiral, not across its eye
   return liveNow().map(({st,ep})=>({lat:ep.lat+3.4, lng:ep.lon, label:st.name.toUpperCase()}));
 }
+const BASIN_NAME={WP:'west Pacific',EP:'east Pacific',CP:'central Pacific',NA:'North Atlantic',
+                  NI:'north Indian',SI:'south Indian',SP:'south Pacific'};
+function basinName(st){ return st.basin_name || BASIN_NAME[st.basin] || st.basin || 'another basin'; }
 function renderLive(){
   const box=document.getElementById('live');
   if(!LIVE){ box.style.display='none'; return; }
   box.style.display='block';
   if(!LIVE.storms || !LIVE.storms.length){
-    box.innerHTML=`<span class="lh">LIVE</span> <span class="lm">no active storms in the West Pacific · IBTrACS ACTIVE · checked ${LIVE.generated_utc||''} UTC</span>`;
+    box.innerHTML=`<span class="lh">LIVE</span> <span class="lm">no storms in the feed · IBTrACS ACTIVE · checked ${LIVE.generated_utc||''} UTC</span>`;
     return;
   }
   const gen=Date.parse((LIVE.generated_utc||'').replace(' ','T')+'Z');
@@ -623,9 +626,12 @@ function renderLive(){
     const when = ep && ep.replay ? `<div class="lm">replaying ${frameLabel(tIdx)}: ${ep.wind} kt · ${ep.pres} hPa</div>` : '';
     return `<div><span class="lh">● ${gone?'LAST STORM':'LIVE'}</span> <img class="cicon" src="cyclone.svg" alt=""><span class="lstorm" data-i="${i}">${st.name}</span> <span class="lm">${st.wind_kt} kt${st.pres_hpa!=null?` · ${st.pres_hpa} hPa`:''} · ${st.time_utc} UTC</span></div>`+
     (gone ? `<div class="lm">dissipated ${whenUTC(st.time_utc)} UTC · its last report, so it is off the globe at now</div>` : '')+
-    `<div class="lm">model: RI ${st.prediction.RI}% · STEADY ${st.prediction.STEADY}% · WEAK ${st.prediction.WEAKEN}%`+
-      (inBox(st.lat, st.lon) ? '' : ` <span style="color:#c9a227">· outside the training box, extrapolated</span>`) + `</div>`+
-      ((f=>f?`<div class="lm">24 h: ${fc24Line(f)}</div>`:'')(forecast24(st.wind_kt, st.pres_hpa, st.prediction)))+
+    (st.prediction
+      ? `<div class="lm">model: RI ${st.prediction.RI}% · STEADY ${st.prediction.STEADY}% · WEAK ${st.prediction.WEAKEN}%</div>`+
+        ((f=>f?`<div class="lm">24 h: ${fc24Line(f)}</div>`:'')(forecast24(st.wind_kt, st.pres_hpa, st.prediction)))
+      : // outside the model's basins: tracked, never scored
+        `<div class="lm">not scored · ${basinName(st)}, outside the model's basins`+
+        (st.track_24h ? ` · <span style="color:#c9a227">24 h track ${fmtLat(st.track_24h.lat)} ${fmtLng(st.track_24h.lon)} by storm motion only</span>` : '') + `</div>`)+
       when;
   }).join('');
   box.querySelectorAll('.lstorm').forEach(el=> el.onclick=()=>loadLive(+el.dataset.i));
@@ -638,15 +644,31 @@ function   loadLive(i){
   const st=LIVE.storms[i]; if(!st) return;
   selCustom=false;
   sel.lat=st.lat; sel.lng=st.lon; sel.cell=cellKey(st.lat, st.lon);
-  month=st.features.MONTH; msel.value=month;
-  liveTrack={fromLat:st.lat, fromLng:st.lon, lat:st.track_24h.lat, lng:st.track_24h.lon};
+  month = st.features ? st.features.MONTH
+        : new Date(Date.parse(st.time_utc.replace(' ','T')+'Z')).getUTCMonth()+1;
+  msel.value=month;
+  liveTrack={fromLat:st.lat, fromLng:st.lon, lat:st.track_24h.lat, lng:st.track_24h.lon,
+             method:st.track_24h.method||''};
   applyCell();
-  FIELDS.forEach(([k])=>{ if(st.features[k]!==undefined) document.getElementById('in-'+k).value=st.features[k]; });
   // keep the hand-entry boxes on the storm, as a globe click does, so PLACE can nudge from it
   const cl=document.getElementById('c-lat'), cn=document.getElementById('c-lon');
   if(cl){ cl.value=st.lat.toFixed(1); cn.value=st.lon.toFixed(1); }
-  conds();   // applyCell painted the cell defaults; the storm's own values are now in the form
-  redraw(); predict();
+  if(st.features){
+    FIELDS.forEach(([k])=>{ if(st.features[k]!==undefined) document.getElementById('in-'+k).value=st.features[k]; });
+    conds();   // applyCell painted the cell defaults; the storm's own values are now in the form
+    redraw(); predict();
+  } else {
+    // A storm the model was never trained on: show its own wind and pressure, keep
+    // its track on the globe, and say plainly why no forecast is issued.
+    const wEl=document.getElementById('in-WIND'), pEl=document.getElementById('in-PRES');
+    if(wEl && Number.isFinite(st.wind_kt)) wEl.value=st.wind_kt;
+    if(pEl && st.pres_hpa!=null) pEl.value=st.pres_hpa;
+    conds(); redraw();
+    corridorGate();   // disables RUN and clears any stale result at this point
+    const vd=document.getElementById('verdict');
+    vd.style.display='block'; vd.className='v-na'; vd.dataset.na='1';
+    vd.innerHTML=`<b>TRACKED, NOT SCORED</b> — ${st.name} is in the ${basinName(st)}, outside the basins this model was trained on (${REGIONS.map(x=>domText(x.domain)).join(' or ')}). Position, wind and track are IBTrACS reports; the rapid-intensification forecast is not issued here because it would be extrapolation.`;
+  }
   world.pointOfView({lat:st.lat, lng:st.lon, altitude:1.5}, 900);
 }
 
@@ -821,8 +843,10 @@ function stormHeads(){   // the 24 h point at the end of each storm's pathway
   for(const {st,ep} of liveNow()){
     const tr=frameTrack(st,ep); if(!tr) continue;
     const f=forecast24(st.wind_kt, st.pres_hpa, st.prediction);
+    const blend=st.scored!==false;
     out.push({lat:ep.lat+tr.dLat, lng:ep.lon+tr.dLon, color:'#ffe4b0', r:0.26, alt:0.013,
-      tip:`${st.name} · 24 h position${f?` · ${f.w24} kt · ${f.p24} hPa`:''} · storm motion + climatology · mean error ${TRACK_ERR.blend} km`});
+      tip:`${st.name} · 24 h position${f?` · ${f.w24} kt · ${f.p24} hPa`:''} · `+
+        (blend?`storm motion + climatology · mean error ${TRACK_ERR.blend} km`:'storm motion only · no local climatology')});
   }
   if(selCustom){
     const e=trackEnd();
@@ -837,7 +861,9 @@ function trackInfo(){
   if(!e){ box.style.display='none'; return; }
   box.style.display='block';
   if(liveTrack){   // live storms have no climatology entry (no .t): never read one
-    box.innerHTML=`<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· storm motion + climatology · mean error ${TRACK_ERR.blend} km</span>`;
+    const blend=!liveTrack.method || liveTrack.method.startsWith('blend');
+    box.innerHTML=`<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· `+
+      (blend ? `storm motion + climatology · mean error ${TRACK_ERR.blend} km` : 'storm motion only · no local climatology')+`</span>`;
     return;
   }
   const drawn = e.t && e.t.src==='the pathway you drew';
@@ -1034,7 +1060,8 @@ function conds(){
     row(e?e.RH>=COND_TH.rh:null,'Humidity 700',e?`${e.RH}% · ≥${COND_TH.rh}`:'no data')+
     row(e && e.CAPE!=null ? e.CAPE>=COND_TH.cape : null,'Instability',
         e ? (e.CAPE!=null ? `${e.CAPE} J/kg · ≥${COND_TH.cape}` : 'no ERA5 CAPE here') : 'no data')+
-    `<div class="note">first three are model inputs · ${!e || e.SRC!=='ncep' ? 'ERA5' : 'NCEP/NCAR shear &amp; humidity, ERA5 CAPE'} values are typical for this cell &amp; month: context, not scored</div>`;
+    (e ? `<div class="note">first three are model inputs · ${e.SRC!=='ncep' ? 'ERA5' : 'NCEP/NCAR shear &amp; humidity, ERA5 CAPE'} values are typical for this cell &amp; month: context, not scored</div>`
+       : `<div class="note">first three are model inputs · no environment climatology for this cell, so shear, humidity and instability are blank</div>`);
   box.style.display='block';
 }
 /* A cleared box is a missing measurement, not a zero: coercing it made an empty
@@ -1072,7 +1099,7 @@ const fmtLat=v=>`${Math.abs(v).toFixed(1)}°${v>=0?'N':'S'}`;
    displacement to one (a 24 h point, a drawn path, a selected storm near the
    dateline), and "215.7°E" is not a place. Normalise to -180..180 before
    printing, so every readout names the hemisphere a user can actually find. */
-const wrapLng=v=>((v+180)%360+360)%360-180;
+const wrapLng=v=>{ const w=((v+180)%360+360)%360-180; return w===-180 ? 180 : w; };   // 180 stays 180 E, not 180 W
 const wrapDelta=wrapLng;   // a difference of two longitudes wraps the same way
 const fmtLng=v=>{ const w=wrapLng(v); return `${Math.abs(w).toFixed(1)}°${w>=0?'E':'W'}`; };
 /* A model's own training box, in +-180 longitude so 180 E and 180 W are the
