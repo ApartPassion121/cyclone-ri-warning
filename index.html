@@ -342,7 +342,7 @@ const world = Globe()(document.getElementById('globe'))
   .polygonLabel(d=>d.properties.tip)
   // custom geometry: cells are drawn as our own sphere-hugging meshes (the polygon cap fill renders as shards)
   // custom geometry carries the cells, the wind flow and the storm spirals
-  .customThreeObject(d=> d.cyclone ? cycloneMesh(d) : d.wind ? windObject() : cellMesh(d))
+  .customThreeObject(d=> d.cyclone ? cycloneMesh(d) : d.wind ? windObject() : d.disc ? discMesh(d) : cellMesh(d))
   .customThreeObjectUpdate(obj=>{ obj.position.set(0,0,0); })
   // heatmap geometry: smooth KDE surface field
   .heatmapPointLat('lat').heatmapPointLng('lng').heatmapPointWeight('w')
@@ -810,6 +810,78 @@ function trackPoint(){
 /* The README promises the track's measured error is shown next to the forecast,
    not hidden: blend = 358 km, climatology = 371 km mean error on the 2021-25 test years. */
 const TRACK_ERR={blend:358, clim:371};
+/* The 24 h error as an area instead of a sentence. A disc of the radius the
+   branch's own label quotes: the cell's measured scatter of real 24 h moves
+   (track_climatology*.json `spread_km`; median 395 km across the corridor, p90
+   727, so a fixed 358 km disc would understate most cells) where that number
+   exists, and the method's measured mean error where it does not - the widened
+   _wp and _east tables were built without spread_km. A bare dot at the end of
+   the branch implied a precision the quoted error contradicts. */
+/* The disc itself: a geodesic cap built in world coordinates, the way cellMesh is
+   built, so it needs no rotation and cannot straddle the dateline. Sits at 0.0042,
+   above the cells (0.0032) and below the paths (0.011), and passes clicks through. */
+const DISC_MAT=new THREE.MeshBasicMaterial({color:0xffe096, transparent:true, opacity:0.2,
+  depthWrite:false, side:THREE.DoubleSide});
+function discMesh(d){
+  const c=world.getCoords(d.lat, d.lng, 0.0042);
+  const ring=[], n=48, R=6371;
+  for(let k=0;k<=n;k++){
+    const b=2*Math.PI*k/n, ang=d.km/R, la1=d.lat*Math.PI/180;
+    const la=Math.asin(Math.sin(la1)*Math.cos(ang)+Math.cos(la1)*Math.sin(ang)*Math.cos(b));
+    const lo=d.lng+Math.atan2(Math.sin(b)*Math.sin(ang)*Math.cos(la1), Math.cos(ang)-Math.sin(la1)*Math.sin(la))*180/Math.PI;
+    ring.push(world.getCoords(la*180/Math.PI, lo, 0.0042));
+  }
+  const verts=[];
+  for(let k=0;k<n;k++) verts.push(c.x,c.y,c.z, ring[k].x,ring[k].y,ring[k].z, ring[k+1].x,ring[k+1].y,ring[k+1].z);
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+  const mesh=new THREE.Mesh(geo, DISC_MAT);
+  mesh.raycast=()=>{};   // the disc is context, not a target
+  // drawn after the transparent cells: it writes no depth, so anything painted
+  // later hides it, and the cells are what a translucent cap must stay visible over
+  mesh.renderOrder=10;
+  return mesh;
+}
+/* spread_km was only written into the original corridor table, and the widened
+   boxes make that file redundant so it is dropped at load. The scatter of real
+   24 h moves in a cell and month is a property of the archive, not of the fit,
+   so it is carried to the same keys of the wider tables - the cell is the same
+   cell whatever scored it. Cells outside 110-145 E keep the method's mean error. */
+function carrySpread(from, to){
+  if(!from || !to || from===to) return;
+  for(const k of Object.keys(to)){
+    const v=to[k], s=from[k];
+    if(v && s && !Number.isFinite(v.spread_km) && Number.isFinite(s.spread_km)){
+      v.spread_km=s.spread_km; v.spread_n=s.n;
+    }
+  }
+}
+function uncerFor(entry, fallback){
+  return (entry && Number.isFinite(entry.spread_km))
+    ? {km:Math.round(entry.spread_km), n:entry.spread_n||entry.n,
+       why:`spread of the ${entry.spread_n||entry.n} real 24 h moves from this cell`}
+    : {km:fallback, why:'mean error of this method, no per-cell scatter here'};
+}
+function uncerText(entry, fallback){   // the same number the disc is drawn with
+  const u=uncerFor(entry, fallback);
+  return (entry && Number.isFinite(entry.spread_km))
+    ? `±${u.km} km (spread of ${u.n} real moves from this cell)`
+    : `±${u.km} km (mean error; no per-cell scatter here)`;
+}
+function discs(){
+  const out=[], m=new Date(frameMs(tIdx)).getUTCMonth()+1;
+  const add=(lat, lng, u)=>out.push({disc:true, lat, lng, km:u.km});
+  for(const {st,ep} of liveNow()){
+    const tr=frameTrack(st,ep); if(!tr) continue;
+    if(st.scored===false) continue;   // a motion-only branch quotes no error, so draw none
+    add(ep.lat+tr.dLat, ep.lon+tr.dLon, uncerFor(trackFor(cellKey(ep.lat,ep.lon), m), TRACK_ERR.blend));
+  }
+  const e=trackEnd();
+  // no disc for the flow-steered branch (unmeasured) or the drawn one (no measured error)
+  if(e && e.via!=='flow' && e.t && e.t.src!=='the pathway you drew')
+    add(e.lat, e.lng, uncerFor(e.t, TRACK_ERR.clim));
+  return out;
+}
 /* Pathway tracker for every storm that exists at the frame on screen: the track it
    has already travelled (first fix to wherever it is now) in orange, and the 24 h
    branch it is heading along in pale gold - the same blend of the storm's own
@@ -872,14 +944,15 @@ function frameTrack(st,ep){
   return {dLat:0.5*mLat+0.5*cl.dLat, dLon:0.5*mLon+0.5*cl.dLon};
 }
 function stormHeads(){   // the 24 h point at the end of each storm's pathway
-  const out=[];
+  const out=[], m=new Date(frameMs(tIdx)).getUTCMonth()+1;
   for(const {st,ep} of liveNow()){
     const tr=frameTrack(st,ep); if(!tr) continue;
     const f=forecast24(st.wind_kt, st.pres_hpa, st.prediction);
     const blend=st.scored!==false;
     out.push({lat:ep.lat+tr.dLat, lng:ep.lon+tr.dLon, color:'#ffe4b0', r:0.26, alt:0.013,
       tip:`${st.name} · 24 h position${f?` · ${f.w24} kt · ${f.p24} hPa`:''} · `+
-        (blend?`storm motion + climatology · mean error ${TRACK_ERR.blend} km`:'storm motion only · no local climatology')});
+        (blend?`storm motion + climatology · ${uncerText(trackFor(cellKey(ep.lat,ep.lon), m), TRACK_ERR.blend)}`
+              :'storm motion only · no local climatology')});
   }
   if(selCustom){
     const e=trackEnd();
@@ -896,7 +969,8 @@ function trackInfo(){
   if(liveTrack){   // live storms have no climatology entry (no .t): never read one
     const blend=!liveTrack.method || liveTrack.method.startsWith('blend');
     box.innerHTML=`<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· `+
-      (blend ? `storm motion + climatology · mean error ${TRACK_ERR.blend} km` : 'storm motion only · no local climatology')+`</span>`;
+      (blend ? `storm motion + climatology · ${uncerText(trackFor(cellKey(e.fromLat||sel.lat, e.fromLng||sel.lng), new Date(frameMs(tIdx)).getUTCMonth()+1), TRACK_ERR.blend)}`
+             : 'storm motion only · no local climatology')+`</span>`;
     return;
   }
   if(e.via==='flow'){   // a placed storm: moved by the analysed flow, nothing measured for it
@@ -907,7 +981,7 @@ function trackInfo(){
   const drawn = e.t && e.t.src==='the pathway you drew';
   box.innerHTML = `<span class="k2">24 h track</span> ${fmtLat(e.lat)} ${fmtLng(e.lng)} <span class="k2">· `+
     (drawn ? `${e.t.src} (${e.t.n} fixes) · ${e.via} · a hand-drawn path has no measured error`
-           : `${e.t.src}${e.t.months?' (nearest month)':''}, ${e.t.n} past storms · ${e.via} · mean error ${TRACK_ERR.clim} km`)+`</span>`;
+           : `${e.t.src}${e.t.months?' (nearest month)':''}, ${e.t.n} past storms · ${e.via} · ${uncerText(e.t, TRACK_ERR.clim)}`)+`</span>`;
 }
 
 /* ---------- selection marker ---------- */
@@ -943,7 +1017,7 @@ function redraw(){
 /* The storms share the custom layer with the cells (three-globe has one): a time
    step rebuilds this list, but the cell items keep their identity, so only the
    one or two spiral meshes are actually re-made. */
-function renderCyclones(){ world.customLayerData(CELL_DATA.concat(stormMarkers())); }
+function renderCyclones(){ world.customLayerData(CELL_DATA.concat(discs(), stormMarkers())); }
 /* Selecting a cell only moves the marker, rings, label, crosshair and track -
    the cell meshes and the heatmap are left alone so a tap stays instant. */
 function redrawSelection(){
@@ -1585,6 +1659,7 @@ Promise.all([getJSON('model_weights.json'), getJSON('region_stats.json'), getJSO
    const add=(w,s,d,t)=>{ if(w && w.features) REGIONS.push({W:w, STATS:s||{}, DEFS:d||{}, TRACK:t||null, domain:domainOf(w)}); };
    add(w0,s0,d0,t0); add(wW,sW,dW,tW); add(wE,sE,dE,tE);
    if(!REGIONS.length) throw new Error('no weights');
+   [tW,tE].forEach(t=>carrySpread(t0,t));   // per-cell scatter, before the old file is dropped
    // a widened box that contains the old one makes the old file redundant: drop
    // it rather than draw a frame inside a frame
    if(REGIONS.length>1 && REGIONS.slice(1).some(r=>covers(r.domain, REGIONS[0].domain))) REGIONS.shift();
