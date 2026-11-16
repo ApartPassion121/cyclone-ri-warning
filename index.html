@@ -205,7 +205,7 @@ const form=document.getElementById('form');
 FIELDS.forEach(([k,l])=>{ const d=document.createElement('div'); d.className='fld';
   d.innerHTML=`<label>${l}</label><input id="in-${k}" type="number" step="any">`; form.appendChild(d); });
 // clearing a box must drop the stale bars at once, not wait for RUN
-document.querySelectorAll('#form input').forEach(el=> el.addEventListener('input', ()=>{ conds(); fieldsGate(); }));
+document.querySelectorAll('#form input').forEach(el=> el.addEventListener('input', ()=>{ conds(); if(fieldsGate()) rangeGate(); }));
 const msel=document.getElementById('month');
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 MONTHS.forEach((n,i)=>{
@@ -1051,7 +1051,7 @@ function applyCell(){
   const fb={WIND:65,PRES:990,DWIND_24:5,DWIND_12:5,DWIND_6:0,DPRES_6:-2,DPRES_24:-5,SST:29,DIST2LAND:300,SPEED:8};
   FIELDS.forEach(([k])=>{ document.getElementById('in-'+k).value = d && d[k]!==undefined ? d[k] : fb[k]; });
   conds();
-  fieldsGate();   // defaults restored: drop any stale "missing values" message
+  fieldsGate(); rangeGate();   // defaults restored: drop any stale "missing values" / "impossible value" message
   monthNote(d);
 }
 /* The six classic formation conditions. The first three are model inputs; the
@@ -1100,6 +1100,27 @@ function fieldsGate(){
   ['p-ri','p-we','p-st'].forEach(id=>{ document.getElementById(id).textContent=''; });
   vd.style.display='block'; vd.className='v-na'; vd.dataset.miss='1';
   vd.innerHTML=`<b>MISSING VALUES</b> — ${miss.slice(0,4).join(', ')}${miss.length>4?` and ${miss.length-4} more`:''} ${miss.length===1?'is':'are'} empty. All ${FIELDS.length} inputs are needed; click the globe to restore the defaults.`;
+  return false;
+}
+/* The measurements with a physical floor at zero. A wind speed, a pressure, a
+   sea temperature, a distance and a motion cannot be negative; a stray minus in
+   one of those boxes is a typo and was being scored as a real storm. ΔWIND and
+   ΔPRES are differences between two reports, so negative is their normal case
+   and stays allowed. */
+const FLOOR={WIND:0, PRES:0, SST:0, DIST2LAND:0, SPEED:0};
+function belowFloor(){
+  const v=vals();
+  return FIELDS.filter(([k])=> FLOOR[k]!==undefined && Number.isFinite(v[k]) && v[k]<FLOOR[k])
+               .map(([k,l])=> `${l} ${v[k]}`);
+}
+function rangeGate(){
+  const bad=belowFloor(), vd=document.getElementById('verdict');
+  if(!bad.length){ if(vd && vd.dataset.bad){ vd.style.display='none'; vd.textContent=''; vd.className=''; delete vd.dataset.bad; } return true; }
+  const res=document.getElementById('result'); if(res) res.style.display='none';
+  showFC24(null);
+  ['p-ri','p-we','p-st'].forEach(id=>{ document.getElementById(id).textContent=''; });
+  vd.style.display='block'; vd.className='v-na'; vd.dataset.bad='1';
+  vd.innerHTML=`<b>IMPOSSIBLE VALUE</b> — ${bad.slice(0,3).join(', ')}: wind speed, pressure, sea temperature, distance to land and motion cannot be below zero. ΔWIND and ΔPRES can — they are changes.`;
   return false;
 }
 /* The fit was trained on 5-40 N only. A linear latitude term keeps raising RI
@@ -1172,6 +1193,7 @@ function predict(){
   if(!W) return;
   if(!corridorGate()) return;
   if(!fieldsGate()) return;
+  if(!rangeGate()) return;   // a negative wind or pressure is a typo, not a storm
   const v=vals();
   const x=W.features.map((f,i)=>(v[f]-W.scaler_mean[i])/W.scaler_scale[i]);
   const z=W.classes.map((c,ci)=> W.intercept[ci] + x.reduce((s,xi,j)=> s+xi*W.coef[ci][j],0));
