@@ -157,6 +157,6 @@ The page is served from the repo root by GitHub Pages, so `index.html` and every
 
 ## AI assistance disclosure
 
-Built by Roshan Sudhakar (solo) for the Veritas AI International High School Hackathon, November 2026, with Muse (Meta AI) used as a disclosed build partner for planning, code review, and verification. All modelling decisions, thresholds, and results were checked against independently reproduced runs; the numbers in this README come from the submitted notebook.
+Built by Roshan Sudhakar (solo) for the Veritas AI International High School Hackathon, November 2026, with Muse (Meta AI) used as a disclosed build partner for planning, code review, and verification and DeepSeek V4.1 Flash Fast for widening the data field for more accurate predictions. All modelling decisions, thresholds, and results were checked against independently reproduced runs; the numbers in this README come from the submitted notebook.
 
 *Student research project — not an official forecast.*
