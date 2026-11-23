@@ -1,6 +1,6 @@
 {
  "source": "IBTrACS ACTIVE (NOAA NCEI), provisional agency rows",
- "generated_utc": "2026-11-22 19:45",
+ "generated_utc": "2026-11-23 07:45",
  "storms": [
   {
    "name": "Xavier",
@@ -8,7 +8,7 @@
    "basin": "SP",
    "basin_name": "south Pacific",
    "scored": false,
-   "time_utc": "2026-11-19 12:00",
+   "time_utc": "2026-11-22 00:00",
    "history": [
     {
      "time_utc": "2026-11-15 06:00",
@@ -244,7 +244,7 @@
     {
      "time_utc": "2026-11-19 09:00",
      "lat": -10.6,
-     "lon": -163.1,
+     "lon": -163.2,
      "wind_kt": 105.0,
      "pres_hpa": 953.0
     },
@@ -254,19 +254,159 @@
      "lon": -163.1,
      "wind_kt": 105.0,
      "pres_hpa": 952.0
+    },
+    {
+     "time_utc": "2026-11-19 15:00",
+     "lat": -10.6,
+     "lon": -163.0,
+     "wind_kt": 102.0,
+     "pres_hpa": 955.0
+    },
+    {
+     "time_utc": "2026-11-19 18:00",
+     "lat": -10.7,
+     "lon": -162.8,
+     "wind_kt": 99.0,
+     "pres_hpa": 957.0
+    },
+    {
+     "time_utc": "2026-11-19 21:00",
+     "lat": -10.9,
+     "lon": -162.7,
+     "wind_kt": 94.0,
+     "pres_hpa": 961.0
+    },
+    {
+     "time_utc": "2026-11-20 00:00",
+     "lat": -11.1,
+     "lon": -162.6,
+     "wind_kt": 89.0,
+     "pres_hpa": 965.0
+    },
+    {
+     "time_utc": "2026-11-20 03:00",
+     "lat": -11.0,
+     "lon": -162.6,
+     "wind_kt": 89.0,
+     "pres_hpa": 965.0
+    },
+    {
+     "time_utc": "2026-11-20 06:00",
+     "lat": -11.0,
+     "lon": -162.8,
+     "wind_kt": 89.0,
+     "pres_hpa": 965.0
+    },
+    {
+     "time_utc": "2026-11-20 09:00",
+     "lat": -11.2,
+     "lon": -163.1,
+     "wind_kt": 82.0,
+     "pres_hpa": 971.0
+    },
+    {
+     "time_utc": "2026-11-20 12:00",
+     "lat": -11.4,
+     "lon": -163.5,
+     "wind_kt": 74.0,
+     "pres_hpa": 976.0
+    },
+    {
+     "time_utc": "2026-11-20 15:00",
+     "lat": -11.4,
+     "lon": -163.8,
+     "wind_kt": 64.0,
+     "pres_hpa": 983.0
+    },
+    {
+     "time_utc": "2026-11-20 18:00",
+     "lat": -11.3,
+     "lon": -164.0,
+     "wind_kt": 54.0,
+     "pres_hpa": 989.0
+    },
+    {
+     "time_utc": "2026-11-20 21:00",
+     "lat": -11.4,
+     "lon": -164.1,
+     "wind_kt": 50.0,
+     "pres_hpa": 992.0
+    },
+    {
+     "time_utc": "2026-11-21 00:00",
+     "lat": -11.5,
+     "lon": -164.2,
+     "wind_kt": 45.0,
+     "pres_hpa": 995.0
+    },
+    {
+     "time_utc": "2026-11-21 03:00",
+     "lat": -11.6,
+     "lon": -164.4,
+     "wind_kt": 42.0,
+     "pres_hpa": 996.0
+    },
+    {
+     "time_utc": "2026-11-21 06:00",
+     "lat": -11.7,
+     "lon": -164.7,
+     "wind_kt": 39.0,
+     "pres_hpa": 996.0
+    },
+    {
+     "time_utc": "2026-11-21 09:00",
+     "lat": -11.7,
+     "lon": -165.0,
+     "wind_kt": 42.0,
+     "pres_hpa": 996.0
+    },
+    {
+     "time_utc": "2026-11-21 12:00",
+     "lat": -11.8,
+     "lon": -165.2,
+     "wind_kt": 45.0,
+     "pres_hpa": 996.0
+    },
+    {
+     "time_utc": "2026-11-21 15:00",
+     "lat": -11.9,
+     "lon": -165.3,
+     "wind_kt": 45.0,
+     "pres_hpa": 997.0
+    },
+    {
+     "time_utc": "2026-11-21 18:00",
+     "lat": -11.9,
+     "lon": -165.6,
+     "wind_kt": 45.0,
+     "pres_hpa": 997.0
+    },
+    {
+     "time_utc": "2026-11-21 21:00",
+     "lat": -11.9,
+     "lon": -166.1,
+     "wind_kt": 45.0,
+     "pres_hpa": 997.0
+    },
+    {
+     "time_utc": "2026-11-22 00:00",
+     "lat": -11.9,
+     "lon": -166.8,
+     "wind_kt": 45.0,
+     "pres_hpa": 997.0
     }
    ],
-   "lat": -10.6,
-   "lon": -163.1,
-   "wind_kt": 105.0,
-   "pres_hpa": 952.0,
+   "lat": -11.9,
+   "lon": -166.8,
+   "wind_kt": 45.0,
+   "pres_hpa": 997.0,
    "features": null,
    "prediction": null,
    "track_24h": {
     "dLat": 0.0,
-    "dLon": 0.0,
-    "lat": -10.6,
-    "lon": -163.1,
+    "dLon": -5.6,
+    "lat": -11.9,
+    "lon": -172.4,
     "method": "storm motion only - no climatology outside the trained basins"
    }
   },
@@ -276,7 +416,7 @@
    "basin": "NI",
    "basin_name": "north Indian",
    "scored": false,
-   "time_utc": "2026-11-19 12:00",
+   "time_utc": "2026-11-20 00:00",
    "history": [
     {
      "time_utc": "2026-11-16 18:00",
@@ -438,19 +578,47 @@
      "lon": 85.3,
      "wind_kt": 35.0,
      "pres_hpa": 1002.0
+    },
+    {
+     "time_utc": "2026-11-19 15:00",
+     "lat": 16.6,
+     "lon": 85.0,
+     "wind_kt": 32.0,
+     "pres_hpa": 1005.0
+    },
+    {
+     "time_utc": "2026-11-19 18:00",
+     "lat": 17.2,
+     "lon": 84.7,
+     "wind_kt": 29.0,
+     "pres_hpa": 1007.0
+    },
+    {
+     "time_utc": "2026-11-19 21:00",
+     "lat": 17.8,
+     "lon": 84.3,
+     "wind_kt": 29.0,
+     "pres_hpa": 1007.0
+    },
+    {
+     "time_utc": "2026-11-20 00:00",
+     "lat": 18.4,
+     "lon": 84.0,
+     "wind_kt": 29.0,
+     "pres_hpa": 1007.0
     }
    ],
-   "lat": 16.0,
-   "lon": 85.3,
-   "wind_kt": 35.0,
-   "pres_hpa": 1002.0,
+   "lat": 18.4,
+   "lon": 84.0,
+   "wind_kt": 29.0,
+   "pres_hpa": 1007.0,
    "features": null,
    "prediction": null,
    "track_24h": {
-    "dLat": 4.0,
-    "dLon": 0.0,
-    "lat": 20.0,
-    "lon": 85.3,
+    "dLat": 4.8,
+    "dLon": -2.4,
+    "lat": 23.2,
+    "lon": 81.6,
     "method": "storm motion only - no climatology outside the trained basins"
    }
   }
