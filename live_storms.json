@@ -1,6 +1,6 @@
 {
  "source": "IBTrACS ACTIVE (NOAA NCEI), provisional agency rows",
- "generated_utc": "2026-11-25 08:41",
+ "generated_utc": "2026-11-25 21:45",
  "storms": [
   {
    "name": "Xavier",
@@ -8,7 +8,7 @@
    "basin": "SP",
    "basin_name": "south Pacific",
    "scored": false,
-   "time_utc": "2026-11-22 00:00",
+   "time_utc": "2026-11-23 00:00",
    "history": [
     {
      "time_utc": "2026-11-15 06:00",
@@ -384,7 +384,7 @@
     {
      "time_utc": "2026-11-21 21:00",
      "lat": -11.9,
-     "lon": -166.1,
+     "lon": -166.2,
      "wind_kt": 45.0,
      "pres_hpa": 997.0
     },
@@ -394,19 +394,75 @@
      "lon": -166.8,
      "wind_kt": 45.0,
      "pres_hpa": 997.0
+    },
+    {
+     "time_utc": "2026-11-22 03:00",
+     "lat": -11.7,
+     "lon": -167.3,
+     "wind_kt": 42.0,
+     "pres_hpa": 998.0
+    },
+    {
+     "time_utc": "2026-11-22 06:00",
+     "lat": -11.6,
+     "lon": -167.6,
+     "wind_kt": 39.0,
+     "pres_hpa": 998.0
+    },
+    {
+     "time_utc": "2026-11-22 09:00",
+     "lat": -11.6,
+     "lon": -167.8,
+     "wind_kt": 39.0,
+     "pres_hpa": 998.0
+    },
+    {
+     "time_utc": "2026-11-22 12:00",
+     "lat": -11.7,
+     "lon": -167.9,
+     "wind_kt": 39.0,
+     "pres_hpa": 998.0
+    },
+    {
+     "time_utc": "2026-11-22 15:00",
+     "lat": -11.8,
+     "lon": -168.2,
+     "wind_kt": 37.0,
+     "pres_hpa": 1000.0
+    },
+    {
+     "time_utc": "2026-11-22 18:00",
+     "lat": -11.8,
+     "lon": -168.5,
+     "wind_kt": 35.0,
+     "pres_hpa": 1002.0
+    },
+    {
+     "time_utc": "2026-11-22 21:00",
+     "lat": -11.8,
+     "lon": -168.7,
+     "wind_kt": 32.0,
+     "pres_hpa": 1002.0
+    },
+    {
+     "time_utc": "2026-11-23 00:00",
+     "lat": -11.8,
+     "lon": -168.8,
+     "wind_kt": 29.0,
+     "pres_hpa": 1002.0
     }
    ],
-   "lat": -11.9,
-   "lon": -166.8,
-   "wind_kt": 45.0,
-   "pres_hpa": 997.0,
+   "lat": -11.8,
+   "lon": -168.8,
+   "wind_kt": 29.0,
+   "pres_hpa": 1002.0,
    "features": null,
    "prediction": null,
    "track_24h": {
     "dLat": 0.0,
-    "dLon": -5.6,
-    "lat": -11.9,
-    "lon": -172.4,
+    "dLon": -0.8,
+    "lat": -11.8,
+    "lon": -169.6,
     "method": "storm motion only - no climatology outside the trained basins"
    }
   },
